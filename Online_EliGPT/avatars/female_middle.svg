@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background -->
+  <circle cx="50" cy="50" r="50" fill="#1e2a2a"/>
+  <!-- Body -->
+  <rect x="18" y="76" width="64" height="22" fill="#3a5a5a" rx="4"/>
+  <!-- Blouse detail -->
+  <path d="M38 76 Q50 84 62 76" fill="#2a4a5a" stroke="#2a4a5a"/>
+  <!-- Neck -->
+  <rect x="43" y="63" width="14" height="15" fill="#d4a075" rx="2"/>
+  <!-- Head -->
+  <ellipse cx="50" cy="51" rx="21" ry="23" fill="#daa878"/>
+  <!-- Shoulder-length hair -->
+  <path d="M29 42 Q22 58 24 78 Q28 80 32 78 Q30 62 33 48" fill="#5a2a10"/>
+  <path d="M71 42 Q78 58 76 78 Q72 80 68 78 Q70 62 67 48" fill="#5a2a10"/>
+  <!-- Hair top -->
+  <path d="M29 42 Q30 27 50 26 Q70 27 71 42 Q65 48 50 47 Q35 48 29 42 Z" fill="#5a2a10"/>
+  <!-- Subtle grey highlight in hair -->
+  <path d="M48 27 Q50 26 52 27 Q51 35 50 38 Q49 35 48 27 Z" fill="#888" opacity="0.3"/>
+  <!-- Ears -->
+  <ellipse cx="29" cy="52" rx="4" ry="5" fill="#d4a075"/>
+  <ellipse cx="71" cy="52" rx="4" ry="5" fill="#d4a075"/>
+  <!-- Small earrings -->
+  <circle cx="29" cy="57" r="2" fill="#c9a96e"/>
+  <circle cx="71" cy="57" r="2" fill="#c9a96e"/>
+  <!-- Subtle forehead lines -->
+  <path d="M38 42 Q50 40 62 42" stroke="#b88858" stroke-width="0.6" fill="none"/>
+  <path d="M39 45 Q50 43 61 45" stroke="#b88858" stroke-width="0.5" fill="none"/>
+  <!-- Slight nasolabial fold hint -->
+  <path d="M37 60 Q39 65 40 68" stroke="#b88858" stroke-width="0.7" fill="none"/>
+  <path d="M63 60 Q61 65 60 68" stroke="#b88858" stroke-width="0.7" fill="none"/>
+  <!-- Eyes -->
+  <ellipse cx="41" cy="51" rx="4.3" ry="4.5" fill="white"/>
+  <ellipse cx="59" cy="51" rx="4.3" ry="4.5" fill="white"/>
+  <ellipse cx="42" cy="52" rx="2.8" ry="2.9" fill="#4a2a10"/>
+  <ellipse cx="60" cy="52" rx="2.8" ry="2.9" fill="#4a2a10"/>
+  <circle cx="43" cy="51" r="0.9" fill="white"/>
+  <circle cx="61" cy="51" r="0.9" fill="white"/>
+  <!-- Light mascara / lashes -->
+  <path d="M37 48 Q41 46 45 48" stroke="#3a1a08" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  <path d="M55 48 Q59 46 63 48" stroke="#3a1a08" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  <!-- Eyebrows -->
+  <path d="M37 46 Q41 44 45 46" stroke="#6a3a18" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M55 46 Q59 44 63 46" stroke="#6a3a18" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <!-- Nose -->
+  <path d="M47 57 Q50 62 53 57" stroke="#b07848" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  <!-- Cheek hint -->
+  <ellipse cx="36" cy="57" rx="5" ry="3.5" fill="#d08060" opacity="0.15"/>
+  <ellipse cx="64" cy="57" rx="5" ry="3.5" fill="#d08060" opacity="0.15"/>
+  <!-- Lips -->
+  <path d="M43 65 Q47 63 50 64 Q53 63 57 65" fill="#c06858" stroke="#a05040" stroke-width="0.8"/>
+  <path d="M43 65 Q50 70 57 65" stroke="#a05040" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>

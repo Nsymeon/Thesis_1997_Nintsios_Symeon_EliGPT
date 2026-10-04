@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="50" fill="#2a3020"/>
+  <!-- Body / shoulders -->
+  <rect x="20" y="75" width="60" height="22" fill="#3a3a3a" rx="4"/>
+  <!-- Shirt / collar -->
+  <rect x="28" y="75" width="44" height="22" fill="#4a5a6a"/>
+  <!-- Tie hint -->
+  <polygon points="50,76 46,82 50,97 54,82" fill="#8a2020"/>
+  <!-- Neck -->
+  <rect x="43" y="63" width="14" height="14" fill="#c09060" rx="2"/>
+  <!-- Head - slightly wider/heavier -->
+  <ellipse cx="50" cy="51" rx="22" ry="23" fill="#c8986a"/>
+  <!-- Hair - salt & pepper, receding -->
+  <path d="M28 38 Q30 26 50 25 Q70 26 72 38" fill="#555" stroke="#555" stroke-width="1"/>
+  <path d="M28 38 Q29 34 50 33 Q71 34 72 38" fill="#777"/>
+  <!-- Temples grey -->
+  <ellipse cx="30" cy="42" rx="5" ry="6" fill="#888"/>
+  <ellipse cx="70" cy="42" rx="5" ry="6" fill="#888"/>
+  <!-- Ears -->
+  <ellipse cx="28" cy="52" rx="4.5" ry="5.5" fill="#c09060"/>
+  <ellipse cx="72" cy="52" rx="4.5" ry="5.5" fill="#c09060"/>
+  <!-- Slight wrinkles on forehead -->
+  <path d="M37 42 Q44 40 50 41 Q56 40 63 42" stroke="#b07848" stroke-width="0.6" fill="none"/>
+  <path d="M39 44 Q50 43 61 44" stroke="#b07848" stroke-width="0.5" fill="none"/>
+  <!-- Eyes -->
+  <ellipse cx="41" cy="51" rx="4.2" ry="4" fill="white"/>
+  <ellipse cx="59" cy="51" rx="4.2" ry="4" fill="white"/>
+  <circle cx="42" cy="52" r="2.5" fill="#3a2a10"/>
+  <circle cx="60" cy="52" r="2.5" fill="#3a2a10"/>
+  <circle cx="43" cy="51" r="0.8" fill="white"/>
+  <circle cx="61" cy="51" r="0.8" fill="white"/>
+  <!-- Under-eye slight bags -->
+  <path d="M37 56 Q41 57 45 56" stroke="#b07848" stroke-width="0.7" fill="none"/>
+  <path d="M55 56 Q59 57 63 56" stroke="#b07848" stroke-width="0.7" fill="none"/>
+  <!-- Eyebrows - thicker -->
+  <path d="M37 45 Q41 43 45 45" stroke="#444" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M55 45 Q59 43 63 45" stroke="#444" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <!-- Nose -->
+  <path d="M47 56 Q50 62 53 56" stroke="#a07040" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+  <!-- Mouth - neutral -->
+  <path d="M44 66 Q50 69 56 66" stroke="#a06040" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <!-- Stubble hint -->
+  <path d="M37 67 Q50 72 63 67" stroke="#888" stroke-width="0.4" fill="none" stroke-dasharray="1,2"/>
+</svg>

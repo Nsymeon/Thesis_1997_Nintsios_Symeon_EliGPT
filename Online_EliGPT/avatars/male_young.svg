@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="50" fill="#2a3a4a"/>
+  <!-- Body / shoulders -->
+  <ellipse cx="50" cy="95" rx="28" ry="18" fill="#1e3a5f"/>
+  <rect x="22" y="77" width="56" height="20" fill="#1e3a5f" rx="4"/>
+  <!-- Neck -->
+  <rect x="43" y="63" width="14" height="14" fill="#c8956a" rx="2"/>
+  <!-- Head -->
+  <ellipse cx="50" cy="52" rx="21" ry="23" fill="#d4a06a"/>
+  <!-- Hair - short dark -->
+  <ellipse cx="50" cy="33" rx="21" ry="10" fill="#2c1a0e"/>
+  <rect x="29" y="33" width="42" height="8" fill="#2c1a0e"/>
+  <!-- Ears -->
+  <ellipse cx="29" cy="52" rx="4" ry="5" fill="#c8956a"/>
+  <ellipse cx="71" cy="52" rx="4" ry="5" fill="#c8956a"/>
+  <!-- Eyes -->
+  <ellipse cx="41" cy="50" rx="4" ry="4.5" fill="white"/>
+  <ellipse cx="59" cy="50" rx="4" ry="4.5" fill="white"/>
+  <circle cx="42" cy="51" r="2.5" fill="#3a2010"/>
+  <circle cx="60" cy="51" r="2.5" fill="#3a2010"/>
+  <circle cx="43" cy="50" r="0.8" fill="white"/>
+  <circle cx="61" cy="50" r="0.8" fill="white"/>
+  <!-- Eyebrows - straight, young -->
+  <path d="M37 44 Q41 42 45 44" stroke="#2c1a0e" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M55 44 Q59 42 63 44" stroke="#2c1a0e" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <!-- Nose -->
+  <path d="M48 55 Q50 60 52 55" stroke="#b8804a" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  <!-- Mouth - slight smile -->
+  <path d="M43 65 Q50 70 57 65" stroke="#b06040" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <!-- T-shirt collar -->
+  <path d="M34 77 Q50 85 66 77" stroke="#4a7ab5" stroke-width="3" fill="none"/>
+</svg>
