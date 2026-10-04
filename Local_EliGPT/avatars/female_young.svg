@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background -->
+  <circle cx="50" cy="50" r="50" fill="#2a1a2e"/>
+  <!-- Body / top -->
+  <ellipse cx="50" cy="97" rx="30" ry="16" fill="#7a3a6a"/>
+  <rect x="20" y="77" width="60" height="20" fill="#7a3a6a" rx="4"/>
+  <!-- Neck -->
+  <rect x="43" y="63" width="14" height="15" fill="#e8b090" rx="2"/>
+  <!-- Head - softer, slightly smaller -->
+  <ellipse cx="50" cy="51" rx="20" ry="22" fill="#f0b888"/>
+  <!-- Long hair - flowing -->
+  <path d="M30 40 Q24 60 26 80 Q30 85 35 82 Q32 65 35 50" fill="#3a1a08"/>
+  <path d="M70 40 Q76 60 74 80 Q70 85 65 82 Q68 65 65 50" fill="#3a1a08"/>
+  <!-- Hair top -->
+  <ellipse cx="50" cy="34" rx="21" ry="12" fill="#3a1a08"/>
+  <path d="M29 40 Q30 28 50 27 Q70 28 71 40 L66 50 Q50 46 34 50 Z" fill="#3a1a08"/>
+  <!-- Ears - smaller -->
+  <ellipse cx="30" cy="51" rx="3.5" ry="4.5" fill="#e8b090"/>
+  <ellipse cx="70" cy="51" rx="3.5" ry="4.5" fill="#f0b888"/>
+  <!-- Eyes - larger, feminine -->
+  <ellipse cx="41" cy="50" rx="4.5" ry="5" fill="white"/>
+  <ellipse cx="59" cy="50" rx="4.5" ry="5" fill="white"/>
+  <ellipse cx="42" cy="51" rx="3" ry="3.2" fill="#3a2010"/>
+  <ellipse cx="60" cy="51" rx="3" ry="3.2" fill="#3a2010"/>
+  <circle cx="43" cy="50" r="0.9" fill="white"/>
+  <circle cx="61" cy="50" r="0.9" fill="white"/>
+  <!-- Eyelashes hint -->
+  <path d="M36.5 46 Q41 44 45.5 46" stroke="#2a1008" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M54.5 46 Q59 44 63.5 46" stroke="#2a1008" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- Eyebrows - arched, feminine -->
+  <path d="M37 44 Q41 41.5 45 44" stroke="#4a2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M55 44 Q59 41.5 63 44" stroke="#4a2808" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- Nose - small -->
+  <path d="M48.5 56 Q50 59 51.5 56" stroke="#c88060" stroke-width="1" fill="none" stroke-linecap="round"/>
+  <!-- Cheeks - rosy -->
+  <ellipse cx="36" cy="56" rx="5" ry="3.5" fill="#e8787a" opacity="0.25"/>
+  <ellipse cx="64" cy="56" rx="5" ry="3.5" fill="#e8787a" opacity="0.25"/>
+  <!-- Lips - fuller -->
+  <path d="M43 64 Q47 62 50 63 Q53 62 57 64" stroke="#c05060" stroke-width="1.2" fill="#d06070"/>
+  <path d="M43 64 Q50 68 57 64" stroke="#c05060" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>

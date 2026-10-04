@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background -->
+  <circle cx="50" cy="50" r="50" fill="#282828"/>
+  <!-- Body -->
+  <rect x="18" y="75" width="64" height="22" fill="#3a3030" rx="4"/>
+  <!-- Cardigan / sweater -->
+  <rect x="22" y="75" width="56" height="22" fill="#5a4a3a"/>
+  <path d="M44 75 L50 83 L56 75" stroke="#3a2a1a" stroke-width="2" fill="none"/>
+  <!-- Neck - thinner -->
+  <rect x="44" y="64" width="12" height="13" fill="#b8886a" rx="2"/>
+  <!-- Head - slightly drooped, more jowl -->
+  <ellipse cx="50" cy="52" rx="21" ry="22" fill="#c09070"/>
+  <!-- Jowls -->
+  <ellipse cx="35" cy="64" rx="7" ry="5" fill="#b88860"/>
+  <ellipse cx="65" cy="64" rx="7" ry="5" fill="#b88860"/>
+  <!-- White/grey hair - sparse on top -->
+  <path d="M29 40 Q32 27 50 26 Q68 27 71 40" fill="#ccc" stroke="#ccc"/>
+  <path d="M29 40 Q33 36 50 35 Q67 36 71 40" fill="#ddd"/>
+  <!-- Bald spot hint -->
+  <ellipse cx="50" cy="32" rx="12" ry="8" fill="#b09070" opacity="0.4"/>
+  <!-- Ears - larger with age -->
+  <ellipse cx="28" cy="53" rx="5" ry="6.5" fill="#b8886a"/>
+  <ellipse cx="72" cy="53" rx="5" ry="6.5" fill="#b8886a"/>
+  <!-- Deep forehead wrinkles -->
+  <path d="M35 40 Q44 38 50 39 Q56 38 65 40" stroke="#9a6848" stroke-width="0.9" fill="none"/>
+  <path d="M36 43 Q50 41 64 43" stroke="#9a6848" stroke-width="0.8" fill="none"/>
+  <path d="M37 46 Q50 44 63 46" stroke="#9a6848" stroke-width="0.7" fill="none"/>
+  <!-- Crow's feet -->
+  <path d="M33 52 Q30 50 31 47" stroke="#9a6848" stroke-width="0.7" fill="none"/>
+  <path d="M34 54 Q30 53 29 51" stroke="#9a6848" stroke-width="0.7" fill="none"/>
+  <path d="M67 52 Q70 50 69 47" stroke="#9a6848" stroke-width="0.7" fill="none"/>
+  <path d="M66 54 Q70 53 71 51" stroke="#9a6848" stroke-width="0.7" fill="none"/>
+  <!-- Eyes - slightly droopy lids -->
+  <ellipse cx="41" cy="52" rx="4" ry="3.5" fill="white"/>
+  <ellipse cx="59" cy="52" rx="4" ry="3.5" fill="white"/>
+  <!-- Droopy upper lid line -->
+  <path d="M37 50 Q41 48 45 50" stroke="#8a6848" stroke-width="1.2" fill="#d4b090" opacity="0.6"/>
+  <path d="M55 50 Q59 48 63 50" stroke="#8a6848" stroke-width="1.2" fill="#d4b090" opacity="0.6"/>
+  <circle cx="42" cy="53" r="2.3" fill="#4a3820"/>
+  <circle cx="60" cy="53" r="2.3" fill="#4a3820"/>
+  <circle cx="43" cy="52" r="0.7" fill="white"/>
+  <circle cx="61" cy="52" r="0.7" fill="white"/>
+  <!-- Eyebrows - grey, bushy -->
+  <path d="M36 46 Q41 44 46 46" stroke="#aaa" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M54 46 Q59 44 64 46" stroke="#aaa" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Nose - broader -->
+  <path d="M46 57 Q50 63 54 57" stroke="#9a6848" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="46" cy="59" rx="2" ry="1.5" fill="#b07858" opacity="0.4"/>
+  <ellipse cx="54" cy="59" rx="2" ry="1.5" fill="#b07858" opacity="0.4"/>
+  <!-- Mouth - thinner with age, slight downward -->
+  <path d="M43 67 Q50 70 57 67" stroke="#906050" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <!-- Nasolabial folds -->
+  <path d="M38 62 Q40 67 42 69" stroke="#9a6848" stroke-width="0.8" fill="none"/>
+  <path d="M62 62 Q60 67 58 69" stroke="#9a6848" stroke-width="0.8" fill="none"/>
+</svg>
