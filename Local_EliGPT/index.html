@@ -1,0 +1,2590 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EliGPT — Onco-Persona Interviewer</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #1a1a1a;
+            --surface2: #242424;
+            --border:   #2e2e2e;
+            --accent:   #c9a96e;
+            --user-bg:  #1e2a3a;
+            --bot-bg:   #1a1a1a;
+            --text:     #e8e3db;
+            --muted:    #666;
+            --red:      #e05555;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── LANGUAGE OVERLAY ── */
+        #lang-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.92);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        #lang-modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 44px 48px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+            min-width: 360px;
+        }
+        #lang-modal .lang-logo {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: var(--surface2);
+        }
+        #lang-modal h2 {
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: 600;
+            text-align: center;
+        }
+        #lang-modal p {
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: -16px;
+        }
+        .lang-btn-row {
+            display: flex;
+            gap: 14px;
+        }
+        .lang-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 20px 28px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--surface2);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s, transform 0.15s;
+            min-width: 120px;
+        }
+        .lang-btn:hover {
+            border-color: var(--accent);
+            background: rgba(201,169,110,0.08);
+            transform: translateY(-2px);
+        }
+        .lang-btn .lang-flag {
+            font-size: 36px;
+            line-height: 1;
+        }
+        .lang-btn .lang-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: 0.5px;
+        }
+        .lang-btn .lang-sub {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 0.5px;
+        }
+
+        /* ── SIDEBAR ── */
+        #sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 14px;
+            gap: 10px;
+        }
+        .sidebar-title {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            text-transform: uppercase;
+            padding: 0 4px 12px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-title img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+        }
+        #persona-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.7;
+            min-height: 80px;
+        }
+        #persona-card b { color: var(--accent); display: block; font-size: 10px; letter-spacing: 1px; margin-bottom: 4px; }
+        #persona-name  { font-size: 15px; color: var(--text); }
+
+        /* Timer */
+        #timer-wrap { text-align: center; padding: 6px 0; }
+        #timer {
+            font-size: 2rem;
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+        #timer.warning { color: var(--red); animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { opacity: 0.4; } }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: 0.2s;
+            width: 100%;
+        }
+        .btn-start  { background: var(--accent); color: #000; }
+        .btn-start:hover { background: #d4b57a; }
+        .btn-start:disabled { background: #333; color: var(--muted); cursor: not-allowed; }
+        .btn-save   { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-save:hover { border-color: var(--accent); }
+        .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); }
+        .btn-danger:hover { background: rgba(224,85,85,0.1); }
+
+        /* Sessions list */
+        .sidebar-label { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; padding: 10px 4px 4px; }
+        #sessions-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .session-item {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: var(--muted);
+            cursor: pointer;
+            transition: 0.2s;
+            line-height: 1.6;
+        }
+        .session-item:hover { border-color: var(--accent); color: var(--text); }
+        .session-item b { color: var(--text); display: block; font-size: 12px; }
+
+        /* ── MAIN ── */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        #header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #header h1 { font-size: 13px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; font-weight: 400; }
+        #status-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; }
+        #status-dot.online  { background: #4caf50; box-shadow: 0 0 6px rgba(76,175,80,0.6); }
+        #status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+
+        /* Chat */
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            scroll-behavior: smooth;
+        }
+        #chat-window::-webkit-scrollbar { width: 4px; }
+        #chat-window::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .msg { max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 15px; line-height: 1.65; animation: fadeUp 0.25s ease; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .msg.user    { align-self: flex-end; background: var(--user-bg); border: 1px solid #2a3d55; border-bottom-right-radius: 3px; font-style: italic; color: #aac4e0; }
+        .msg.patient { align-self: flex-start; background: var(--bot-bg); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+        .msg.system  { align-self: center; color: var(--muted); font-size: 12px; background: transparent; border: none; padding: 4px; }
+        .msg.intro {
+            align-self: stretch;
+            background: transparent;
+            border: 1px solid rgba(201,169,110,0.35);
+            border-left: 3px solid var(--accent);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.6;
+            margin: 8px 0 4px 0;
+        }
+
+        .typing { align-self: flex-start; padding: 14px 18px; background: var(--bot-bg); border: 1px solid var(--border); border-radius: 14px; border-bottom-left-radius: 3px; display: flex; gap: 5px; align-items: center; }
+        .dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: tdot 1.4s infinite ease-in-out; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes tdot { 0%,100% { transform:translateY(0); opacity:0.3; } 50% { transform:translateY(-4px); opacity:1; } }
+
+        /* Input */
+        #input-area {
+            padding: 16px 24px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+        #user-input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: 0.2s;
+        }
+        #user-input:focus { border-color: rgba(201,169,110,0.4); }
+        #user-input:disabled { opacity: 0.4; }
+        #send-btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        #send-btn:hover { background: #d4b57a; }
+        #send-btn:disabled { background: #333; color: var(--muted); cursor: not-allowed; }
+
+        /* ── CHAT BACKGROUND ── */
+        #main { position: relative; }
+        #chat-bg {
+            position: absolute;
+            inset: 0;
+            background-image: url('background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.13;
+            pointer-events: none;
+            z-index: 0;
+        }
+        #header, #chat-window, #input-area { position: relative; z-index: 1; }
+
+        /* ── AVATAR in persona card ── */
+        #persona-card { display: flex; flex-direction: column; gap: 6px; }
+        #persona-avatar {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            align-self: center;
+            margin-bottom: 2px;
+            background: var(--surface2);
+            transition: opacity 0.3s;
+        }
+
+        /* ── BACKGROUND GALLERY in setup ── */
+        .bg-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .bg-tile {
+            aspect-ratio: 16/9;
+            border-radius: 6px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+            transition: border-color 0.15s, transform 0.15s;
+            background: var(--surface2);
+        }
+        .bg-tile img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .bg-tile.none-tile {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: var(--muted); letter-spacing: 1px;
+        }
+        .bg-tile:hover { border-color: var(--accent); transform: scale(1.03); }
+        .bg-tile.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,169,110,0.4); }
+        .bg-tile .bg-check {
+            position: absolute; top: 4px; right: 4px;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--accent); color: #000;
+            font-size: 11px; font-weight: bold;
+            display: none; align-items: center; justify-content: center;
+        }
+        .bg-tile.selected .bg-check { display: flex; }
+
+        /* ── TIMER SETUP in setup modal ── */
+        .timer-setup-row {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .timer-preset {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .timer-preset:hover { border-color: var(--accent); color: var(--text); }
+        .timer-preset.selected { border-color: var(--accent); color: var(--accent); background: rgba(201,169,110,0.1); }
+        .timer-custom-input {
+            width: 70px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .timer-custom-input:focus { border-color: rgba(201,169,110,0.5); }
+
+        /* ── CHAT AVATAR next to messages ── */
+        .msg-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .msg-row.user-row { flex-direction: row-reverse; }
+        .msg-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+        }
+        /* ── STATS PANEL ── */
+        #stats-panel {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+        #stats-panel .stats-title {
+            font-size: 9px; letter-spacing: 1.5px;
+            text-transform: uppercase; color: var(--accent);
+            margin-bottom: 8px; font-weight: 600;
+        }
+        .stat-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 3px 0; border-bottom: 1px solid rgba(46,46,46,0.5);
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-val { font-size: 13px; font-weight: 700; color: var(--text); }
+        .stat-val.gold { color: var(--accent); }
+        .stat-diag-list { margin-top: 6px; }
+        .stat-diag-item { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 10px; }
+        .stat-diag-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .stat-diag-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s; }
+        .stat-diag-count { font-size: 10px; color: var(--muted); min-width: 16px; text-align: right; }
+
+        /* ── TIPS POPUP ── */
+        #tips-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75); z-index: 400;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        #tips-overlay.show { display: flex; }
+        #tips-modal {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; width: 520px; max-height: 80vh;
+            overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            padding: 28px 28px 20px; display: flex; flex-direction: column; gap: 14px;
+        }
+        #tips-modal h2 { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+        #tips-patient-desc {
+            font-size: 13px; color: var(--text); line-height: 1.6;
+            padding: 10px 14px; background: var(--surface2);
+            border-left: 3px solid var(--accent); border-radius: 4px;
+        }
+        .tips-section-title { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+        .tip-example {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 8px; padding: 9px 13px; font-size: 12px;
+            color: var(--text); margin-bottom: 6px; line-height: 1.5;
+        }
+        .tip-example::before { content: "→ "; color: var(--accent); font-weight: 600; }
+        #tips-ok-btn {
+            background: var(--accent); color: #000; border: none;
+            border-radius: 8px; padding: 11px; cursor: pointer;
+            font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; width: 100%; margin-top: 4px; transition: 0.2s;
+        }
+        #tips-ok-btn:hover { background: #d4b57a; }
+
+        #setup-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        #setup-overlay.show { display: flex; }
+        #setup-modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 520px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+        }
+        #setup-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        #setup-header h2 {
+            font-size: 13px;
+            letter-spacing: 2.5px;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        #setup-header p {
+            font-size: 12px;
+            color: var(--muted);
+        }
+        #setup-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .setup-field { display: flex; flex-direction: column; gap: 8px; }
+        .setup-label {
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        /* Scrollable list */
+        .scroll-list {
+            height: 130px;
+            overflow-y: auto;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .scroll-list::-webkit-scrollbar { width: 4px; }
+        .scroll-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .scroll-item {
+            padding: 9px 14px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+            border-bottom: 1px solid rgba(46,46,46,0.5);
+            transition: background 0.15s, color 0.15s;
+            user-select: none;
+        }
+        .scroll-item:last-child { border-bottom: none; }
+        .scroll-item:hover { background: rgba(201,169,110,0.08); }
+        .scroll-item.selected {
+            background: rgba(201,169,110,0.18);
+            color: var(--accent);
+            font-weight: 600;
+        }
+        /* Age input */
+        .age-input {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text);
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 120px;
+        }
+        .age-input:focus { border-color: rgba(201,169,110,0.5); }
+        .age-hint { font-size: 11px; color: var(--muted); }
+        #setup-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .btn-setup-cancel {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+        .btn-setup-cancel:hover { border-color: var(--muted); color: var(--text); }
+        .btn-setup-start {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 22px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+        .btn-setup-start:hover { background: #d4b57a; }
+
+        /* Modal για προβολή session */
+        #modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-overlay.show { display: flex; }
+        #modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        #modal-header h2 { font-size: 14px; color: var(--accent); }
+        #modal-body { overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+        .modal-msg { padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.6; }
+        .modal-msg.user    { background: var(--user-bg); align-self: flex-end; color: #aac4e0; }
+        .modal-msg.patient { background: var(--surface2); align-self: flex-start; }
+        .close-btn { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+        .close-btn:hover { color: var(--text); }
+    
+        /* ── SETUP TABS ── */
+        .setup-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            gap: 0;
+        }
+        .setup-tab {
+            padding: 12px 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: color 0.2s, border-color 0.2s;
+            user-select: none;
+        }
+        .setup-tab:hover { color: var(--text); }
+        .setup-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .setup-tab-panel { display: none; }
+        .setup-tab-panel.active { display: flex; flex-direction: column; gap: 18px; }
+
+        /* ── CUSTOM TEXTAREA ── */
+        .custom-textarea {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            line-height: 1.65;
+            resize: vertical;
+            min-height: 160px;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .custom-textarea:focus { border-color: rgba(201,169,110,0.5); }
+        .custom-textarea::placeholder { color: var(--muted); font-style: italic; }
+        .custom-example-box {
+            background: rgba(201,169,110,0.07);
+            border: 1px solid rgba(201,169,110,0.25);
+            border-left: 3px solid var(--accent);
+            border-radius: 6px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+        .custom-example-box b {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+        </style>
+</head>
+<body>
+
+<!-- ── LANGUAGE SELECTION OVERLAY ── -->
+<div id="lang-overlay">
+    <div id="lang-modal">
+        <img class="lang-logo" src="logo.png" alt="logo" onerror="this.style.display='none'">
+        <h2>EliGPT — Onco-Persona</h2>
+        <p>Select interview language / Επιλέξτε γλώσσα συνέντευξης</p>
+        <div class="lang-btn-row">
+            <button class="lang-btn" onclick="selectLang('el')">
+                <span class="lang-flag">🇬🇷</span>
+                <span class="lang-name">Ελληνικά</span>
+                <span class="lang-sub">Greek</span>
+            </button>
+            <button class="lang-btn" onclick="selectLang('en')">
+                <span class="lang-flag">🇬🇧</span>
+                <span class="lang-name">English</span>
+                <span class="lang-sub">Αγγλικά</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── SIDEBAR ── -->
+<div id="sidebar">
+    <div class="sidebar-title">
+        <img src="logo.png" alt="logo" onerror="this.style.display='none'">
+        EliGPT v2.0
+    </div>
+
+    <div id="persona-card">
+        <b id="persona-card-label">● Ενεργή Persona</b>
+        <img id="persona-avatar" src="" alt="avatar" onerror="this.style.display='none'" style="display:none">
+        <span id="persona-name">—</span>
+        <div id="mood-indicator" style="display:none;margin-top:6px">
+            <div id="mood-indicator-text" style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Άνοιγμα ασθενή</div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+                    <div id="mood-bar" style="height:100%;border-radius:2px;transition:width 0.5s,background 0.5s;width:50%;background:#666"></div>
+                </div>
+                <span id="mood-label" style="font-size:10px;color:var(--muted);min-width:60px;text-align:right"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="timer-wrap">
+        <div id="timer">30:00</div>
+    </div>
+
+    <button class="btn btn-start" id="start-btn" onclick="openSetup()">
+        ▶ Νέα Συνέντευξη
+    </button>
+    <button class="btn btn-save" id="save-btn" onclick="saveSession()" disabled>
+        💾 Αποθήκευση
+    </button>
+    <button class="btn btn-danger" id="end-btn" onclick="endEarly()" disabled>
+        ■ Τερματισμός
+    </button>
+
+    <!-- Stats -->
+    <div id="stats-panel">
+        <div class="stats-title" id="stats-panel-title">📊 Στατιστικά</div>
+        <div id="stats-content"><span style="color:var(--muted);font-size:10px">Φόρτωση...</span></div>
+    </div>
+
+    <div class="sidebar-label" id="sidebar-saved-label">Αποθηκευμένες</div>
+    <div id="sessions-list"></div>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+    <div id="chat-bg"></div>
+    <div id="header">
+        <h1>Onco-Persona Interviewer</h1>
+        <div id="status-dot"></div>
+    </div>
+
+    <div id="chat-window">
+        <div class="msg system" id="chat-initial-msg">Πατήστε «Νέα Συνέντευξη» για να ξεκινήσετε.</div>
+    </div>
+
+    <div id="input-area">
+        <input type="text" id="user-input" placeholder="Περιμένετε τον ασθενή..." disabled>
+        <button id="send-btn" onclick="sendMessage()" disabled>Αποστολή</button>
+    </div>
+</div>
+
+<!-- ── TIPS POPUP ── -->
+<div id="tips-overlay">
+    <div id="tips-modal">
+        <h2 id="tips-modal-h2">Πριν ξεκινήσετε</h2>
+        <div id="tips-patient-desc"></div>
+        <div>
+            <div class="tips-section-title" id="tips-section-title-el">Παραδείγματα ερωτήσεων</div>
+            <div id="tips-examples"></div>
+        </div>
+        <button id="tips-ok-btn" onclick="closeTips()">Έναρξη Συνέντευξης ▶</button>
+    </div>
+</div>
+
+<!-- ── SETUP MODAL ── -->
+<div id="setup-overlay">
+    <div id="setup-modal">
+        <div id="setup-header">
+            <h2 id="setup-title-el">Ρύθμιση Ασθενή</h2>
+            <p id="setup-subtitle-el">Επιλέξτε τα χαρακτηριστικά πριν ξεκινήσει η συνέντευξη</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="setup-tabs">
+            <div class="setup-tab active" id="tab-preset-btn" onclick="switchSetupTab('preset')">
+                <span id="tab-preset-label">Preset</span>
+            </div>
+            <div class="setup-tab" id="tab-custom-btn" onclick="switchSetupTab('custom')">
+                <span id="tab-custom-label">Custom</span>
+            </div>
+        </div>
+
+        <div id="setup-body">
+        <!-- ── TAB: PRESET ── -->
+        <div class="setup-tab-panel active" id="panel-preset">
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-name">Όνομα</div>
+                <div class="scroll-list" id="name-list"></div>
+                <div class="age-hint" id="selected-name-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-age">Ηλικία</div>
+                <input type="number" class="age-input" id="setup-age" placeholder="18–90" min="18" max="90"
+                       oninput="if(parseInt(this.value)>90) this.value=90; if(parseInt(this.value)<18&&this.value!='') this.value=18;">
+                <div class="age-hint" id="hint-age">Αφήστε κενό για τυχαία ηλικία</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-mood">Διάθεση</div>
+                <div class="scroll-list" id="mood-list"></div>
+                <div class="age-hint" id="selected-mood-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-cancer">Είδος Καρκίνου</div>
+                <div class="scroll-list" id="cancer-list"></div>
+                <div class="age-hint" id="selected-cancer-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-marital">Οικογενειακή Κατάσταση</div>
+                <div class="scroll-list" id="marital-list"></div>
+                <div class="age-hint" id="selected-marital-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-occupation">Επάγγελμα</div>
+                <div class="scroll-list" id="occupation-list"></div>
+                <div class="age-hint" id="selected-occupation-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-housing">Τύπος Κατοικίας</div>
+                <div class="scroll-list" id="housing-list"></div>
+                <div class="age-hint" id="selected-housing-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-education">Επίπεδο Εκπαίδευσης</div>
+                <div class="scroll-list" id="education-list"></div>
+                <div class="age-hint" id="selected-education-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-treatment">Φάση Θεραπείας / Survivor</div>
+                <div class="scroll-list" id="treatment-list"></div>
+                <div class="age-hint" id="selected-treatment-hint">Επιλεγμένο: Τυχαίο</div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-duration">Διάρκεια Συνέντευξης</div>
+                <div class="timer-setup-row">
+                    <button class="timer-preset" data-minutes="5" onclick="selectTimer(5,this)" id="timer-btn-5">5 λεπτά</button>
+                    <button class="timer-preset" data-minutes="15" onclick="selectTimer(15,this)" id="timer-btn-15">15 λεπτά</button>
+                    <button class="timer-preset" data-minutes="20" onclick="selectTimer(20,this)" id="timer-btn-20">20 λεπτά</button>
+                    <button class="timer-preset selected" data-minutes="30" onclick="selectTimer(30,this)" id="timer-btn-30">30 λεπτά</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                    <span class="age-hint" id="timer-prefix-label">ή προσαρμογή:</span>
+                    <input type="number" class="timer-custom-input" id="timer-custom" placeholder="λεπτά" min="1" max="120" oninput="onCustomTimer(this)">
+                    <span class="age-hint" id="timer-suffix-label">λεπτά</span>
+                </div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-background">Εικόνα Φόντου</div>
+                <div class="bg-gallery" id="bg-gallery"></div>
+            </div>
+
+        </div><!-- /panel-preset -->
+
+        <!-- ── TAB: CUSTOM ── -->
+        <div class="setup-tab-panel" id="panel-custom">
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-custom-desc">Περιγραφή Χαρακτήρα</div>
+                <textarea
+                    class="custom-textarea"
+                    id="custom-desc-input"
+                    rows="7"
+                    id="lbl-custom-desc-placeholder"
+                    placeholder="Περιγράψτε τον χαρακτήρα ελεύθερα..."></textarea>
+                <div class="custom-example-box" id="custom-example-box">
+                    <b id="custom-example-label">Παράδειγμα</b>
+                    <span id="custom-example-text">Γυναίκα 52 ετών, δασκάλα. Πολύ κοντά στα παιδιά της — έχει δύο εφήβους. Συνήθως ήρεμη, αλλά τελευταία είναι πικραμένη επειδή αισθάνεται ότι ο γιατρός της δεν την ακούει. Μιλά λιγόλογα για τον εαυτό της αλλά ανοίγεται αν μιλήσεις για την οικογένεια. Δεν της αρέσει να παραπονιέται.</span>
+                </div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-duration-custom">Διάρκεια Συνέντευξης</div>
+                <div class="timer-setup-row">
+                    <button class="timer-preset" data-minutes="5"  onclick="selectTimer(5,this)"  id="timer-btn-5c">5 λεπτά</button>
+                    <button class="timer-preset" data-minutes="15" onclick="selectTimer(15,this)" id="timer-btn-15c">15 λεπτά</button>
+                    <button class="timer-preset" data-minutes="20" onclick="selectTimer(20,this)" id="timer-btn-20c">20 λεπτά</button>
+                    <button class="timer-preset selected" data-minutes="30" onclick="selectTimer(30,this)" id="timer-btn-30c">30 λεπτά</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                    <span class="age-hint" id="timer-prefix-label-c">ή προσαρμογή:</span>
+                    <input type="number" class="timer-custom-input" id="timer-custom-c" placeholder="λεπτά" min="1" max="120" oninput="onCustomTimerC(this)">
+                    <span class="age-hint" id="timer-suffix-label-c">λεπτά</span>
+                </div>
+            </div>
+
+            <div class="setup-field">
+                <div class="setup-label" id="lbl-background-custom">Εικόνα Φόντου</div>
+                <div class="bg-gallery" id="bg-gallery-custom"></div>
+            </div>
+
+        </div><!-- /panel-custom -->
+
+        </div><!-- /setup-body -->
+        <div id="setup-footer">
+            <button class="btn-setup-cancel" onclick="closeSetup()" id="setup-cancel-btn">Άκυρο</button>
+            <button class="btn-setup-start" onclick="confirmSetup()" id="setup-start-btn">▶ Έναρξη Συνέντευξης</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL ── -->
+<div id="modal-overlay">
+    <div id="modal">
+        <div id="modal-header">
+            <h2 id="modal-title">Συνέντευξη</h2>
+            <button class="close-btn" onclick="closeModal()">✕</button>
+        </div>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<script>
+const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : location.origin;
+async function apiFetch(url, options) {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(typeof body.detail === "string" ? body.detail : `HTTP ${response.status}`);
+    }
+    return response;
+}
+let sending = false;
+let inFlight = Promise.resolve();
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c]));
+}
+
+let currentLang   = "el";
+let sessionId     = null;
+let timeLeft      = 1800;
+let timerId       = null;
+let isRunning     = false;
+
+const chatWindow  = document.getElementById("chat-window");
+const userInput   = document.getElementById("user-input");
+const sendBtn     = document.getElementById("send-btn");
+const startBtn    = document.getElementById("start-btn");
+const saveBtn     = document.getElementById("save-btn");
+const endBtn      = document.getElementById("end-btn");
+const timerEl     = document.getElementById("timer");
+const statusDot   = document.getElementById("status-dot");
+const personaName = document.getElementById("persona-name");
+
+// ══════════════════════════════════════════════════════════
+// TRANSLATIONS
+// ══════════════════════════════════════════════════════════
+const UI = {
+    el: {
+        active_persona:     "● Ενεργή Persona",
+        patient_openness:   "Άνοιγμα ασθενή",
+        mood_open:          "Ανοιχτός/ή",
+        mood_opening:       "Χαλαρώνει",
+        mood_closed:        "Κλειστός/ή",
+        mood_guarded:       "Επιφυλακτικός/ή",
+        mood_neutral:       "Ουδέτερος/η",
+        btn_new_interview:  "▶ Νέα Συνέντευξη",
+        btn_save:           "💾 Αποθήκευση",
+        btn_end:            "■ Τερματισμός",
+        stats_title:        "📊 Στατιστικά",
+        stats_loading:      "Φόρτωση...",
+        saved_label:        "Αποθηκευμένες",
+        no_saved:           "Δεν υπάρχουν αποθηκευμένες.",
+        chat_initial:       "Πατήστε «Νέα Συνέντευξη» για να ξεκινήσετε.",
+        placeholder_waiting:"Περιμένετε τον ασθενή...",
+        placeholder_active: "Γράψτε την ερώτησή σας...",
+        btn_send:           "Αποστολή",
+        setup_title:        "Ρύθμιση Ασθενή",
+        setup_subtitle:     "Επιλέξτε τα χαρακτηριστικά πριν ξεκινήσει η συνέντευξη",
+        lbl_name:           "Όνομα",
+        lbl_age:            "Ηλικία",
+        hint_age:           "Αφήστε κενό για τυχαία ηλικία",
+        lbl_mood:           "Διάθεση",
+        lbl_cancer:         "Είδος Καρκίνου",
+        lbl_marital:        "Οικογενειακή Κατάσταση",
+        lbl_occupation:     "Επάγγελμα",
+        lbl_housing:        "Τύπος Κατοικίας",
+        lbl_education:      "Επίπεδο Εκπαίδευσης",
+        lbl_treatment:      "Φάση Θεραπείας / Survivor",
+        lbl_duration:       "Διάρκεια Συνέντευξης",
+        lbl_background:     "Εικόνα Φόντου",
+        timer_5:            "5 λεπτά",
+        timer_15:           "15 λεπτά",
+        timer_20:           "20 λεπτά",
+        timer_30:           "30 λεπτά",
+        timer_prefix:       "ή προσαρμογή:",
+        timer_suffix:       "λεπτά",
+        timer_placeholder:  "λεπτά",
+        no_background:      "Χωρίς φόντο",
+        random_item:        "— Τυχαίο —",
+        selected_random:    "Επιλεγμένο: Τυχαίο",
+        selected_prefix:    "Επιλεγμένο: ",
+        btn_cancel:         "Άκυρο",
+        btn_start_interview:"▶ Έναρξη Συνέντευξης",
+        tips_title:         "Πριν ξεκινήσετε",
+        tips_examples_label:"Παραδείγματα ερωτήσεων",
+        tips_start_btn:     "Έναρξη Συνέντευξης ▶",
+        bio_treatment:      "Φάση θεραπείας:",
+        bio_marital:        "Οικογ. κατάσταση:",
+        bio_occupation:     "Επάγγελμα:",
+        bio_education:      "Εκπαίδευση:",
+        bio_housing:        "Κατοικία:",
+        notifying_patient:  "Ειδοποίηση ασθενή... Παρακαλώ περιμένετε.",
+        warning_1min:       "⏱ Συντομεύεστε — έχετε ακόμη 1 λεπτό.",
+        session_ended_time: "Ο χρόνος της συνέντευξης έληξε.",
+        session_ended_early:"Η συνέντευξη τερματίστηκε νωρίς.",
+        session_ended_walkout: "Ο ασθενής τερμάτισε τη συνέντευξη.",
+        patient_goodbye:    "Αυτόν τον χρόνο ειχάμε σήμερα. Καλή συνέχεια με την έρευνά σας.",
+        server_error:       "⚠ Σφάλμα σύνδεσης με τον server. Βεβαιωθείτε ότι τρέχει το server.py.",
+        comm_error:         "⚠ Σφάλμα επικοινωνίας με τον server.",
+        save_ok_prefix:     "✅ Αποθηκεύτηκε: ",
+        save_failed:        "⚠ Αποτυχία αποθήκευσης.",
+        load_failed:        "⚠ Αδυναμία φόρτωσης αρχείου.",
+        confirm_end:        "Να τερματιστεί η συνέντευξη;",
+        confirm_save:       "Να αποθηκευτεί η συνέντευξη;",
+        stat_total:         "Συνολικές συνεντεύξεις",
+        stat_avg:           "Μέσες ερωτήσεις",
+        stat_no_data:       "Δεν υπάρχουν δεδομένα ακόμη.",
+        stat_offline:       "Server εκτός σύνδεσης.",
+        stat_top_diag:      "Συχνότερες διαγνώσεις",
+        years_old:          "ετών",
+        questions:          "ερωτήσεις",
+        stage_label:        "Στάδιο",
+        persona_loading:    "Φόρτωση...",
+        tab_preset:         "Preset",
+        tab_custom:         "Custom",
+        lbl_custom_desc:    "Περιγραφή Χαρακτήρα",
+        custom_placeholder: "Περιγράψτε τον χαρακτήρα ελεύθερα...",
+        custom_example_lbl: "Παράδειγμα",
+        custom_example_txt: "Γυναίκα 52 ετών, δασκάλα. Πολύ κοντά στα παιδιά της — έχει δύο εφήβους. Συνήθως ήρεμη, αλλά τελευταία είναι πικραμένη επειδή αισθάνεται ότι ο γιατρός της δεν την ακούει. Μιλά λιγόλογα για τον εαυτό της αλλά ανοίγεται αν μιλήσεις για την οικογένεια. Δεν της αρέσει να παραπονιέται.",
+        lbl_duration_custom:"Διάρκεια Συνέντευξης",
+        lbl_background_custom:"Εικόνα Φόντου",
+    },
+    en: {
+        active_persona:     "● Active Persona",
+        patient_openness:   "Patient openness",
+        mood_open:          "Open",
+        mood_opening:       "Opening up",
+        mood_closed:        "Closed",
+        mood_guarded:       "Guarded",
+        mood_neutral:       "Neutral",
+        btn_new_interview:  "▶ New Interview",
+        btn_save:           "💾 Save",
+        btn_end:            "■ End",
+        stats_title:        "📊 Statistics",
+        stats_loading:      "Loading...",
+        saved_label:        "Saved",
+        no_saved:           "No saved sessions.",
+        chat_initial:       "Press «New Interview» to begin.",
+        placeholder_waiting:"Waiting for patient...",
+        placeholder_active: "Type your question...",
+        btn_send:           "Send",
+        setup_title:        "Patient Setup",
+        setup_subtitle:     "Select characteristics before starting the interview",
+        lbl_name:           "Name",
+        lbl_age:            "Age",
+        hint_age:           "Leave blank for random age",
+        lbl_mood:           "Mood",
+        lbl_cancer:         "Cancer Type",
+        lbl_marital:        "Marital Status",
+        lbl_occupation:     "Occupation",
+        lbl_housing:        "Housing Type",
+        lbl_education:      "Education Level",
+        lbl_treatment:      "Treatment Phase / Survivor",
+        lbl_duration:       "Interview Duration",
+        lbl_background:     "Background Image",
+        timer_5:            "5 min",
+        timer_15:           "15 min",
+        timer_20:           "20 min",
+        timer_30:           "30 min",
+        timer_prefix:       "or custom:",
+        timer_suffix:       "min",
+        timer_placeholder:  "min",
+        no_background:      "No background",
+        random_item:        "— Random —",
+        selected_random:    "Selected: Random",
+        selected_prefix:    "Selected: ",
+        btn_cancel:         "Cancel",
+        btn_start_interview:"▶ Start Interview",
+        tips_title:         "Before you begin",
+        tips_examples_label:"Sample questions",
+        tips_start_btn:     "Start Interview ▶",
+        bio_treatment:      "Treatment phase:",
+        bio_marital:        "Marital status:",
+        bio_occupation:     "Occupation:",
+        bio_education:      "Education:",
+        bio_housing:        "Housing:",
+        notifying_patient:  "Notifying patient... Please wait.",
+        warning_1min:       "⏱ Time is running out — 1 minute left.",
+        session_ended_time: "Interview time ended.",
+        session_ended_early:"Interview ended early.",
+        session_ended_walkout: "The patient ended the interview.",
+        patient_goodbye:    "That's the time we had today. Good luck with your research.",
+        server_error:       "⚠ Connection error. Make sure server.py is running.",
+        comm_error:         "⚠ Communication error with server.",
+        save_ok_prefix:     "✅ Saved: ",
+        save_failed:        "⚠ Save failed.",
+        load_failed:        "⚠ Unable to load file.",
+        confirm_end:        "End the interview?",
+        confirm_save:       "Save the interview?",
+        stat_total:         "Total interviews",
+        stat_avg:           "Avg. questions",
+        stat_no_data:       "No data yet.",
+        stat_offline:       "Server offline.",
+        stat_top_diag:      "Top diagnoses",
+        years_old:          "y/o",
+        questions:          "questions",
+        stage_label:        "Stage",
+        persona_loading:    "Loading...",
+        tab_preset:         "Preset",
+        tab_custom:         "Custom",
+        lbl_custom_desc:    "Character Description",
+        custom_placeholder: "Describe the character freely...",
+        custom_example_lbl: "Example",
+        custom_example_txt: "A 52-year-old woman, primary school teacher. Very close to her children — two teenagers. Usually calm, but lately bitter because she feels her doctor doesn\'t listen to her. She speaks little about herself but opens up when you bring up family. Doesn\'t like to complain.",
+        lbl_duration_custom:"Interview Duration",
+        lbl_background_custom:"Background Image",
+    }
+};
+
+function t(key) {
+    return (UI[currentLang] || {})[key] || UI.el[key] || key;
+}
+
+// ── LANGUAGE MODAL ──────────────────────────────────────────
+function showLangModal() {
+    document.getElementById("lang-overlay").style.display = "flex";
+}
+
+function selectLang(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    document.getElementById("lang-overlay").style.display = "none";
+    applyTranslations();
+    loadSessionsList();
+    loadStats();
+}
+
+function applyTranslations() {
+    document.getElementById("persona-card-label").textContent   = t("active_persona");
+    document.getElementById("mood-indicator-text").textContent  = t("patient_openness");
+    document.getElementById("start-btn").textContent            = t("btn_new_interview");
+    document.getElementById("save-btn").textContent             = t("btn_save");
+    document.getElementById("end-btn").textContent              = t("btn_end");
+    document.getElementById("stats-panel-title").textContent    = t("stats_title");
+    document.getElementById("sidebar-saved-label").textContent  = t("saved_label");
+    document.getElementById("send-btn").textContent             = t("btn_send");
+    document.getElementById("tips-modal-h2").textContent        = t("tips_title");
+    document.getElementById("tips-section-title-el").textContent= t("tips_examples_label");
+    document.getElementById("tips-ok-btn").textContent          = t("tips_start_btn");
+    document.getElementById("setup-title-el").textContent       = t("setup_title");
+    document.getElementById("setup-subtitle-el").textContent    = t("setup_subtitle");
+    document.getElementById("lbl-name").textContent             = t("lbl_name");
+    document.getElementById("lbl-age").textContent              = t("lbl_age");
+    document.getElementById("hint-age").textContent             = t("hint_age");
+    document.getElementById("lbl-mood").textContent             = t("lbl_mood");
+    document.getElementById("lbl-cancer").textContent           = t("lbl_cancer");
+    document.getElementById("lbl-marital").textContent          = t("lbl_marital");
+    document.getElementById("lbl-occupation").textContent       = t("lbl_occupation");
+    document.getElementById("lbl-housing").textContent          = t("lbl_housing");
+    document.getElementById("lbl-education").textContent        = t("lbl_education");
+    document.getElementById("lbl-treatment").textContent        = t("lbl_treatment");
+    document.getElementById("lbl-duration").textContent         = t("lbl_duration");
+    document.getElementById("lbl-background").textContent       = t("lbl_background");
+    document.getElementById("timer-btn-5").textContent          = t("timer_5");
+    document.getElementById("timer-btn-15").textContent         = t("timer_15");
+    document.getElementById("timer-btn-20").textContent         = t("timer_20");
+    document.getElementById("timer-btn-30").textContent         = t("timer_30");
+    document.getElementById("timer-prefix-label").textContent   = t("timer_prefix");
+    document.getElementById("timer-suffix-label").textContent   = t("timer_suffix");
+    document.getElementById("timer-custom").placeholder         = t("timer_placeholder");
+    document.getElementById("setup-cancel-btn").textContent     = t("btn_cancel");
+    document.getElementById("setup-start-btn").textContent      = t("btn_start_interview");
+
+    // Hint fields: reset to "Random" state in the new language
+    ["name","mood","cancer","marital","occupation","housing","education","treatment"].forEach(f => {
+        const el = document.getElementById(`selected-${f}-hint`);
+        if (el && el.textContent.includes("Τυχαί") || el && el.textContent.includes("Random")) {
+            el.textContent = t("selected_random");
+        }
+    });
+
+    // Initial chat message (only update if not in an active session)
+    const initMsg = document.getElementById("chat-initial-msg");
+    if (initMsg) initMsg.textContent = t("chat_initial");
+
+    // Tab labels
+    const tpLabel = document.getElementById("tab-preset-label");
+    const tcLabel = document.getElementById("tab-custom-label");
+    if (tpLabel) tpLabel.textContent = t("tab_preset");
+    if (tcLabel) tcLabel.textContent = t("tab_custom");
+
+    // Custom panel labels
+    const lcdEl = document.getElementById("lbl-custom-desc");
+    if (lcdEl) lcdEl.textContent = t("lbl_custom_desc");
+    const lcbEl = document.getElementById("lbl-background-custom");
+    if (lcbEl) lcbEl.textContent = t("lbl_background_custom");
+    const lcdcEl = document.getElementById("lbl-duration-custom");
+    if (lcdcEl) lcdcEl.textContent = t("lbl_duration_custom");
+    const exLbl = document.getElementById("custom-example-label");
+    if (exLbl) exLbl.textContent = t("custom_example_lbl");
+    const exTxt = document.getElementById("custom-example-text");
+    if (exTxt) exTxt.textContent = t("custom_example_txt");
+    const cdInput = document.getElementById("custom-desc-input");
+    if (cdInput) cdInput.placeholder = t("custom_placeholder");
+
+    // Sync timer labels in custom panel
+    const tb5c  = document.getElementById("timer-btn-5c");
+    const tb15c = document.getElementById("timer-btn-15c");
+    const tb20c = document.getElementById("timer-btn-20c");
+    const tb30c = document.getElementById("timer-btn-30c");
+    if (tb5c)  tb5c.textContent  = t("timer_5");
+    if (tb15c) tb15c.textContent = t("timer_15");
+    if (tb20c) tb20c.textContent = t("timer_20");
+    if (tb30c) tb30c.textContent = t("timer_30");
+    const tpPrefC = document.getElementById("timer-prefix-label-c");
+    const tpSufC  = document.getElementById("timer-suffix-label-c");
+    const tpCusC  = document.getElementById("timer-custom-c");
+    if (tpPrefC) tpPrefC.textContent = t("timer_prefix");
+    if (tpSufC)  tpSufC.textContent  = t("timer_suffix");
+    if (tpCusC)  tpCusC.placeholder  = t("timer_placeholder");
+
+    // Input placeholder
+    if (userInput.disabled) userInput.placeholder = t("placeholder_waiting");
+
+    // Stats panel loading placeholder
+    const statsContent = document.getElementById("stats-content");
+    if (statsContent) {
+        const inner = statsContent.textContent.trim();
+        if (inner === "Φόρτωση..." || inner === "Loading...") {
+            statsContent.innerHTML = `<span style="color:var(--muted);font-size:10px">${t("stats_loading")}</span>`;
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+// ENGLISH DATA STRUCTURES
+// ══════════════════════════════════════════════════════════
+const NAME_EN_MAP_FRONTEND = {
+    "Γιώργος":"Giorgos", "Κώστας":"Kostas", "Δημήτρης":"Dimitris",
+    "Γιάννης":"Giannis", "Νίκος":"Nikos",   "Αντώνης":"Antonis",
+    "Χρήστος":"Christos","Σταύρος":"Stavros","Παναγιώτης":"Panagiotis",
+    "Θανάσης":"Thanasis","Βασίλης":"Vassilis","Μανώλης":"Manolis",
+    "Μαρία":"Maria",     "Ελένη":"Eleni",    "Βασιλική":"Vasiliki",
+    "Φωτεινή":"Fotini",  "Σοφία":"Sofia",    "Αικατερίνη":"Aikaterini",
+    "Δήμητρα":"Dimitra", "Αντιγόνη":"Antigoni","Χαρά":"Chara",
+    "Ειρήνη":"Eirini",   "Θεοδώρα":"Theodora","Νίκη":"Niki",
+};
+
+const CANCER_LABELS_EN = {
+    "καρκίνο στον πνεύμονα":           "Lung Cancer",
+    "καρκίνο στο παχύ έντερο":         "Colorectal Cancer",
+    "καρκίνο στον προστάτη":           "Prostate Cancer",
+    "λέμφωμα Hodgkin":                 "Hodgkin Lymphoma",
+    "λέμφωμα non-Hodgkin":             "Non-Hodgkin Lymphoma",
+    "λευχαιμία":                       "Leukemia",
+    "καρκίνο στο πάγκρεας":           "Pancreatic Cancer",
+    "μελάνωμα":                        "Melanoma",
+    "καρκίνο στο μαστό":              "Breast Cancer",
+    "καρκίνο στο νεφρό":              "Kidney Cancer",
+    "καρκίνο στον θυρεοειδή":         "Thyroid Cancer",
+    "καρκίνο στο ήπαρ":               "Liver Cancer",
+    "καρκίνο στο στομάχι":            "Stomach Cancer",
+    "καρκίνο στην ουροδόχο κύστη":    "Bladder Cancer",
+    "καρκίνο στο ενδομήτριο":         "Endometrial Cancer",
+    "καρκίνο στον τράχηλο της μήτρας":"Cervical Cancer",
+    "καρκίνο στις ωοθήκες":           "Ovarian Cancer",
+    "πολλαπλό μυέλωμα":               "Multiple Myeloma",
+    "καρκίνο στον οισοφάγο":          "Esophageal Cancer",
+    "γλοιοβλάστωμα":                  "Glioblastoma (Brain)",
+    "μεσοθηλίωμα":                    "Mesothelioma",
+    "σάρκωμα":                        "Sarcoma",
+    "καρκίνο στον στοματοφάρυγγα":    "Oropharyngeal Cancer",
+    "καρκίνο στο δέρμα":              "Skin Cancer",
+    "καρκίνο στον λάρυγγα":           "Laryngeal Cancer",
+};
+
+// Maps for values that the server always returns in Greek (random selections)
+const MARITAL_EN = {
+    "Ανύπαντρος/η":    "Single",
+    "Παντρεμένος/η":   "Married",
+    "Διαζευγμένος/η":  "Divorced",
+    "Χήρος/α":         "Widowed",
+    "Σε σχέση":        "In a relationship",
+};
+const OCCUPATION_EN = {
+    "Εκπαιδευτικός":             "Teacher",
+    "Γιατρός / Νοσηλευτής":     "Doctor / Nurse",
+    "Μηχανικός":                 "Engineer",
+    "Λογιστής":                  "Accountant",
+    "Αγρότης/ισσα":              "Farmer",
+    "Έμπορος":                   "Merchant",
+    "Δημόσιος υπάλληλος":       "Civil servant",
+    "Οικιακός βίος":             "Homemaker",
+    "Συνταξιούχος":              "Retired",
+    "Ιδιωτικός υπάλληλος":      "Private employee",
+    "Ελεύθερος επαγγελματίας":  "Self-employed",
+    "Άνεργος/η":                 "Unemployed",
+    "Φοιτητής/ρια":              "Student",
+    "Τεχνίτης":                  "Tradesperson",
+    "Οδηγός":                    "Driver",
+};
+const HOUSING_EN = {
+    "Διαμέρισμα σε πόλη":        "Apartment in city",
+    "Μονοκατοικία σε πόλη":     "House in city",
+    "Σπίτι σε χωριό":            "Village home",
+    "Σπίτι σε προάστιο":         "Suburban home",
+    "Μονοκατοικία στην εξοχή":  "House in countryside",
+};
+const EDUCATION_EN = {
+    "Δημοτικό":              "Primary school",
+    "Γυμνάσιο":              "Middle school",
+    "Λύκειο":                "High school",
+    "ΙΕΚ / Τεχνική σχολή":  "Vocational school",
+    "ΑΕΙ / ΤΕΙ":            "University",
+    "Μεταπτυχιακό":          "Master's degree",
+    "Διδακτορικό":           "Doctorate",
+};
+const TREATMENT_EN = {
+    "Μόλις ξεκίνησε θεραπεία (< 3 μήνες)":            "Just started treatment (< 3 months)",
+    "Σε θεραπεία 3–12 μήνες":                          "In treatment 3–12 months",
+    "Σε θεραπεία 1–3 χρόνια":                          "In treatment 1–3 years",
+    "Σε θεραπεία > 3 χρόνια":                          "In treatment > 3 years",
+    "Survivor — ολοκλήρωσε θεραπεία < 1 χρόνο πριν":  "Survivor — completed treatment < 1 year ago",
+    "Survivor — ολοκλήρωσε θεραπεία > 1 χρόνο πριν":  "Survivor — completed treatment > 1 year ago",
+    "Παρηγορητική αγωγή (palliative)":                 "Palliative care",
+};
+
+function localizeField(value, map) {
+    if (!value) return value;
+    return (currentLang === "en" && map[value]) ? map[value] : value;
+}
+
+const CHAR_EPITHETS_EN_DISPLAY = {
+    "ανέμελος/η":                   "easygoing",
+    "ζωηρός/ή":                     "lively",
+    "αγχωμένος/η με τη ζωή του/της":"stressed",
+    "σκεπτικιστής/ρια":             "skeptical",
+    "ήρεμος/η":                     "calm",
+    "κουρασμένος/η αλλά συγκροτημένος/η":"exhausted but composed",
+    "πρακτικός/ή":                  "practical",
+    "λιγομίλητος/η":                "reserved",
+    "πικραμένος/η":                 "bitter",
+    "φιλόσοφος":                    "philosophical",
+    "νοσταλγικός/ή":                "nostalgic",
+    "υπομονετικός/ή":               "patient",
+    "απότομος/η":                   "blunt",
+    "μελαγχολικός/ή":               "melancholic",
+};
+
+// ── English lists (values sent to server stay Greek for moods/etc.) ──
+const MOODS_EN = ["Tired","Anxious","Calm","Bitter","Indifferent","Optimistic","Angry"];
+const MARITAL_OPTIONS_EN  = ["Single","Married","Divorced","Widowed","In a relationship"];
+const OCCUPATION_OPTIONS_EN = [
+    "Teacher","Doctor / Nurse","Engineer","Accountant","Farmer",
+    "Merchant","Civil servant","Homemaker","Retired",
+    "Private employee","Self-employed","Unemployed","Student","Tradesperson","Driver"
+];
+const HOUSING_OPTIONS_EN = [
+    "Apartment in city","House in city","Village home","Suburban home","House in countryside"
+];
+const EDUCATION_OPTIONS_EN = [
+    "Primary school","Middle school","High school","Vocational school",
+    "University","Master's degree","Doctorate"
+];
+const TREATMENT_OPTIONS_EN = [
+    "Just started treatment (< 3 months)",
+    "In treatment 3–12 months",
+    "In treatment 1–3 years",
+    "In treatment > 3 years",
+    "Survivor — completed treatment < 1 year ago",
+    "Survivor — completed treatment > 1 year ago",
+    "Palliative care"
+];
+
+// ══════════════════════════════════════════════════════════
+// TIPS — bilingual
+// ══════════════════════════════════════════════════════════
+const TIPS_BASE = {
+    el: [
+        "Πώς είναι μια συνηθισμένη μέρα για σένα τώρα;",
+        "Πώς αισθάνεσαι για τη θεραπεία που κάνεις;",
+        "Υπάρχει κάτι που σε ανησυχεί ιδιαίτερα αυτή την περίοδο;",
+        "Πώς σε επηρεάζει αυτό στην καθημερινή σου ζωή;",
+        "Τι σε βοηθάει να ξεχαστείς, έστω για λίγο;",
+        "Πώς κοιμάσαι τελευταία;",
+        "Νιώθεις ότι έχεις αρκετή υποστήριξη γύρω σου;",
+        "Υπάρχει κάτι που θα ήθελες να ήξεραν οι γιατροί σου αλλά δεν τους έχεις πει;",
+    ],
+    en: [
+        "What does a typical day look like for you now?",
+        "How do you feel about the treatment you're going through?",
+        "Is there something that worries you particularly these days?",
+        "How does this affect your daily life?",
+        "What helps you escape, even for a little while?",
+        "How have you been sleeping lately?",
+        "Do you feel you have enough support around you?",
+        "Is there something you wish your doctors knew but haven't told them?",
+    ]
+};
+
+const TIPS_BY_CHAR = {
+    el: {
+        "λιγομίλητος/η":    ["Τι είναι αυτό που σε δυσκολεύει περισσότερο τελευταία;", "Τι σου λείπει από πριν;"],
+        "απότομος/η":       ["Τι σε εκνευρίζει περισσότερο με την κατάστασή σου;", "Τι θα ήθελες να άλλαζε άμεσα;"],
+        "πικραμένος/η":     ["Υπάρχει κάτι που νιώθεις ότι δεν πήγε όπως έπρεπε;", "Τι σε έχει απογοητεύσει;"],
+        "φιλόσοφος":        ["Πώς έχει αλλάξει ο τρόπος που βλέπεις τα πράγματα;", "Τι σου έχει διδάξει αυτή η εμπειρία;"],
+        "νοσταλγικός/ή":    ["Υπάρχει κάτι από πριν που σου λείπει πολύ;", "Τι αναμνήσεις σε δυναμώνουν;"],
+        "αγχωμένος/η με τη ζωή του/της": ["Πώς τα βγάζεις πέρα με όλες τις υποχρεώσεις παράλληλα;", "Ποιο είναι το πιο δύσκολο κομμάτι της καθημερινότητάς σου;"],
+        "ανέμελος/η":       ["Πώς καταφέρνεις να κρατάς θετική στάση;", "Υπάρχουν στιγμές που δυσκολεύεσαι περισσότερο;"],
+        "ζωηρός/ή":         ["Πώς έχει αλλάξει ο ρυθμός της ζωής σου;", "Τι σε κρατά απασχολημένο/η;"],
+        "σκεπτικιστής/ρια": ["Τι σε έκανε να αποφασίσεις να ακολουθήσεις αυτή τη θεραπεία;", "Υπάρχει κάτι που δεν σου εξήγησαν και θα ήθελες να ξέρεις;"],
+        "ήρεμος/η":         ["Πώς έχεις βρει ισορροπία μέσα σε όλα αυτά;", "Τι σε βοηθά να παραμένεις ήρεμος/η;"],
+        "μελαγχολικός/ή":   ["Υπάρχουν μέρες που νιώθεις πιο βαριά από άλλες;", "Τι σε κάνει να συνεχίζεις;"],
+        "υπομονετικός/ή":   ["Πώς αντιμετωπίζεις τις περιόδους αναμονής;", "Τι σου δίνει δύναμη να υπομένεις;"],
+        "κουρασμένος/η αλλά συγκροτημένος/η": ["Πώς διαχειρίζεσαι την κούραση καθημερινά;", "Υπάρχουν πράγματα που έχεις σταματήσει να κάνεις λόγω κόπωσης;"],
+        "πρακτικός/ή":      ["Τι αλλαγές έχεις κάνει στην καθημερινότητά σου;", "Πώς οργανώνεις τις επισκέψεις και τα φάρμακα;"],
+    },
+    en: {
+        "λιγομίλητος/η":    ["What's been hardest for you lately?", "What do you miss from before?"],
+        "απότομος/η":       ["What frustrates you most about your situation?", "What would you want to change right away?"],
+        "πικραμένος/η":     ["Is there something you feel didn't go the way it should have?", "What has disappointed you?"],
+        "φιλόσοφος":        ["How has your perspective on things changed?", "What has this experience taught you?"],
+        "νοσταλγικός/ή":    ["Is there something from before that you miss a lot?", "What memories give you strength?"],
+        "αγχωμένος/η με τη ζωή του/της": ["How do you manage all your responsibilities at the same time?", "What's the hardest part of your daily routine?"],
+        "ανέμελος/η":       ["How do you manage to keep a positive attitude?", "Are there moments you find harder than others?"],
+        "ζωηρός/ή":         ["How has the pace of your life changed?", "What keeps you busy?"],
+        "σκεπτικιστής/ρια": ["What made you decide to follow this treatment?", "Is there something they haven't explained that you'd like to know?"],
+        "ήρεμος/η":         ["How have you found balance in all of this?", "What helps you stay calm?"],
+        "μελαγχολικός/ή":   ["Are there days that feel heavier than others?", "What keeps you going?"],
+        "υπομονετικός/ή":   ["How do you cope with the waiting periods?", "What gives you the strength to be patient?"],
+        "κουρασμένος/η αλλά συγκροτημένος/η": ["How do you manage fatigue day to day?", "Are there things you've stopped doing because of tiredness?"],
+        "πρακτικός/ή":      ["What changes have you made to your daily routine?", "How do you organize your visits and medications?"],
+    }
+};
+
+const TIPS_BY_AGE = {
+    el: {
+        young:  ["Πώς επηρεάζει αυτό τη δουλειά ή τις σπουδές σου;", "Πώς αντιδρούν οι φίλοι σου;", "Πώς σε επηρεάζει στις σχέσεις σου;"],
+        middle: ["Πώς τα βγάζεις πέρα με τις οικογενειακές υποχρεώσεις;", "Τι έχει αλλάξει στη σχέση σου με την οικογένειά σου;", "Πώς επηρεάζεται η δουλειά σου;"],
+        elder:  ["Πώς σε βοηθά η οικογένειά σου;", "Υπάρχουν πράγματα που δεν μπορείς πλέον να κάνεις μόνος/η;", "Τι σκέφτεσαι για το μέλλον;"],
+    },
+    en: {
+        young:  ["How does this affect your work or studies?", "How do your friends react?", "How does it affect your relationships?"],
+        middle: ["How do you manage family responsibilities?", "What has changed in your relationship with your family?", "How does it affect your work?"],
+        elder:  ["How does your family help you?", "Are there things you can no longer do on your own?", "What do you think about the future?"],
+    }
+};
+
+// Diagnosis keyword tips — keywords stay Greek (diagnosis value always Greek internally)
+const TIPS_BY_DIAG_KEYWORDS = {
+    el: [
+        { words: ["πνεύμον","μαστ","παγκρέ","λέμφ","λευχαιμ","μυέλ"], q: ["Πώς νιώθεις μετά από κάθε κύκλο θεραπείας;", "Πώς επηρεάζει η χημειοθεραπεία την καθημερινότητά σου;"] },
+        { words: ["οισοφ","στομάχ","παχύ","ήπαρ","παγκρέ"],             q: ["Υπάρχουν συμπτώματα που σε δυσκολεύουν ιδιαίτερα;", "Πώς έχει αλλάξει η σχέση σου με το φαγητό;"] },
+        { words: ["μελάν","δέρμ"],                                       q: ["Πώς αισθάνεσαι για τις αλλαγές στο σώμα σου;"] },
+        { words: ["γλοιοβλάστ","εγκέφαλ"],                              q: ["Υπάρχουν πράγματα που δυσκολεύεσαι να κάνεις που πριν ήταν εύκολα;"] },
+    ],
+    en: [
+        { words: ["πνεύμον","μαστ","παγκρέ","λέμφ","λευχαιμ","μυέλ"], q: ["How do you feel after each treatment cycle?", "How does chemotherapy affect your daily life?"] },
+        { words: ["οισοφ","στομάχ","παχύ","ήπαρ","παγκρέ"],             q: ["Are there symptoms that particularly trouble you?", "How has your relationship with food changed?"] },
+        { words: ["μελάν","δέρμ"],                                       q: ["How do you feel about the changes in your body?"] },
+        { words: ["γλοιοβλάστ","εγκέφαλ"],                              q: ["Are there things you find difficult to do that used to be easy?"] },
+    ]
+};
+
+const CHAR_DESCRIPTIONS = {
+    el: {
+        "ανέμελος/η":                   "μιλά χαλαρά και δεν παίρνει τα πράγματα πολύ βαριά. Προσπαθεί να κρατήσει ελαφριά ατμόσφαιρα.",
+        "ζωηρός/ή":                     "μιλά γρήγορα, αλλάζει θέμα εύκολα. Χρειάζεται να τον/την εστιάσεις.",
+        "αγχωμένος/η με τη ζωή του/της":"έχει πολλά στο μυαλό ταυτόχρονα. Η ασθένεια είναι ένα από αυτά, όχι το μοναδικό.",
+        "σκεπτικιστής/ρια":             "δεν εμπιστεύεται εύκολα. Απαντά με μέτρο. Χρειάζεται χρόνο για να ανοιχτεί.",
+        "ήρεμος/η":                     "μιλά αργά και μετρημένα. Δεν τον/την αγχώνει η σιωπή. Ειλικρινής αν ρωτήσεις σωστά.",
+        "κουρασμένος/η αλλά συγκροτημένος/η": "εξαντλημένος/η αλλά ξέρει τι λέει. Δεν παραπονιέται — απλώς καταγράφει.",
+        "πρακτικός/ή":                  "δεν χαραμίζει λόγια. Εκτιμά ερωτήσεις που πάνε κατευθείαν στο θέμα.",
+        "λιγομίλητος/η":                "απαντά σύντομα. Αν θέλεις περισσότερα, ρώτα πιο συγκεκριμένα.",
+        "πικραμένος/η":                 "υπάρχει υπόκωφο παράπονο κάτω από τα λόγια του/της. Δεν θυμώνει — έχει κουραστεί.",
+        "φιλόσοφος":                    "βλέπει τα πράγματα από απόσταση. Λέει κάποιες φορές πράγματα που ξαφνιάζουν.",
+        "νοσταλγικός/ή":                "τα παλιά έρχονται συχνά στη σκέψη του/της. Ανοίγεται αν ρωτήσεις για το παρελθόν.",
+        "υπομονετικός/ή":               "έχει συνηθίσει να περιμένει. Δεν βιάζεται, δεν πιέζει.",
+        "απότομος/η":                   "λέει τα πράγματα όπως είναι. Μην το πάρεις προσωπικά — είναι ο τρόπος του/της.",
+        "μελαγχολικός/ή":               "υπάρχει βαρύτητα στον τρόπο που μιλά. Δεν είναι κατάθλιψη — απλώς βάρος.",
+    },
+    en: {
+        "ανέμελος/η":                   "talks casually and doesn't take things too seriously — even this. Tries to keep the mood light.",
+        "ζωηρός/ή":                     "talks fast, changes topics easily. You may need to refocus them.",
+        "αγχωμένος/η με τη ζωή του/της":"has a lot on their mind at once. The illness is one of them, not the only one.",
+        "σκεπτικιστής/ρια":             "doesn't trust easily. Answers carefully. Takes time to open up.",
+        "ήρεμος/η":                     "speaks slowly and deliberately. Silence doesn't bother them. Honest if you ask the right question.",
+        "κουρασμένος/η αλλά συγκροτημένος/η": "exhausted but knows what they're saying. Doesn't complain — just states things.",
+        "πρακτικός/ή":                  "no wasted words. Appreciates questions that get straight to the point.",
+        "λιγομίλητος/η":                "short answers. Ask more specifically if you want more.",
+        "πικραμένος/η":                 "there's a quiet resentment underneath the words. Not anger — exhaustion.",
+        "φιλόσοφος":                    "sees things from a distance. Sometimes says things that catch you off guard.",
+        "νοσταλγικός/ή":                "the past comes up often. Opens up when you ask about before.",
+        "υπομονετικός/ή":               "used to waiting. Doesn't rush, doesn't pressure.",
+        "απότομος/η":                   "says things as they are. Don't take it personally — that's just their way.",
+        "μελαγχολικός/ή":               "there's a heaviness to how they speak. Not depression — just weight.",
+    }
+};
+
+function getPersonaQuestions(char, age, diag) {
+    const lang    = currentLang;
+    const diagLow = (diag || "").toLowerCase();
+    let pool = [];
+
+    const charQ = (TIPS_BY_CHAR[lang] || TIPS_BY_CHAR.el)[char] || [];
+    pool.push(...charQ);
+
+    const diagEntries = TIPS_BY_DIAG_KEYWORDS[lang] || TIPS_BY_DIAG_KEYWORDS.el;
+    for (const entry of diagEntries) {
+        if (entry.words.some(w => diagLow.includes(w))) pool.push(...entry.q);
+    }
+
+    const ageGroup = age < 35 ? "young" : age < 60 ? "middle" : "elder";
+    const ageEntries = TIPS_BY_AGE[lang] || TIPS_BY_AGE.el;
+    pool.push(...(ageEntries[ageGroup] || []));
+
+    pool.push(...(TIPS_BASE[lang] || TIPS_BASE.el));
+
+    const unique = [...new Map(pool.map(q => [q, q])).values()];
+    return unique.sort(() => Math.random() - 0.5).slice(0, 4);
+}
+
+function showTipsPopup(name, char, gender, systemIntro, age, diag) {
+    const descEl   = document.getElementById("tips-patient-desc");
+    const charDesc = (CHAR_DESCRIPTIONS[currentLang] || CHAR_DESCRIPTIONS.el)[char] || "";
+    const extra    = currentPersonaExtra || {};
+
+    let html = systemIntro ? `<strong>${systemIntro}</strong>` : "";
+    if (charDesc) html += `<br><span style="font-weight:normal;color:var(--muted)">${charDesc.charAt(0).toUpperCase() + charDesc.slice(1)}</span>`;
+
+    const bioLines = [];
+    if (extra.treatment) bioLines.push(`<b>${t("bio_treatment")}</b> ${localizeField(extra.treatment, TREATMENT_EN)}`);
+    if (extra.marital)   bioLines.push(`<b>${t("bio_marital")}</b> ${localizeField(extra.marital,   MARITAL_EN)}`);
+    if (extra.occupation)bioLines.push(`<b>${t("bio_occupation")}</b> ${localizeField(extra.occupation, OCCUPATION_EN)}`);
+    if (extra.education) bioLines.push(`<b>${t("bio_education")}</b> ${localizeField(extra.education, EDUCATION_EN)}`);
+    if (extra.housing)   bioLines.push(`<b>${t("bio_housing")}</b> ${localizeField(extra.housing,   HOUSING_EN)}`);
+
+    if (bioLines.length) {
+        html += `<div style="margin-top:10px;padding:8px 12px;background:rgba(201,169,110,0.07);border-radius:6px;font-size:12px;line-height:1.8;color:var(--text)">${bioLines.join("<br>")}</div>`;
+    }
+    descEl.innerHTML = html;
+
+    const questions  = getPersonaQuestions(char, age || 50, diag || "");
+    const examplesEl = document.getElementById("tips-examples");
+    examplesEl.innerHTML = "";
+    questions.forEach(ex => {
+        const div = document.createElement("div");
+        div.className = "tip-example";
+        div.textContent = ex;
+        examplesEl.appendChild(div);
+    });
+
+    document.getElementById("tips-overlay").classList.add("show");
+}
+
+function closeTips() {
+    document.getElementById("tips-overlay").classList.remove("show");
+    userInput.disabled = !isRunning || sending;
+    sendBtn.disabled   = !isRunning || sending;
+    saveBtn.disabled   = false;
+    userInput.focus();
+}
+
+// ── TIMESTAMP HELPER ───────────────────────────────────────
+function nowTs() {
+    const d = new Date();
+    const h = String(d.getHours()).padStart(2, "0");
+    const m = String(d.getMinutes()).padStart(2, "0");
+    return `${h}:${m}`;
+}
+
+// ── MOOD INDICATOR ─────────────────────────────────────────
+function updateMoodIndicator(score) {
+    const wrap  = document.getElementById("mood-indicator");
+    const bar   = document.getElementById("mood-bar");
+    const label = document.getElementById("mood-label");
+    if (!wrap) return;
+
+    wrap.style.display = "block";
+
+    const pct   = Math.round(((score + 3) / 6) * 100);
+    const color = score >= 2  ? "#27ae60"
+                : score >= 1  ? "#7eb87e"
+                : score <= -2 ? "#e74c3c"
+                : score <= -1 ? "#e0956a"
+                : "#888888";
+    const text  = score >= 2  ? t("mood_open")
+                : score >= 1  ? t("mood_opening")
+                : score <= -2 ? t("mood_closed")
+                : score <= -1 ? t("mood_guarded")
+                : t("mood_neutral");
+
+    bar.style.width      = pct + "%";
+    bar.style.background = color;
+    label.textContent    = text;
+    label.style.color    = color;
+}
+
+function resetMoodIndicator() {
+    const wrap = document.getElementById("mood-indicator");
+    if (wrap) wrap.style.display = "none";
+}
+
+// ══════════════════════════════════════════════════════════
+// SETUP DATA
+// ══════════════════════════════════════════════════════════
+const NAMES_ALL = [
+    { name: "Γιώργος",    gender: "male"   },
+    { name: "Κώστας",     gender: "male"   },
+    { name: "Δημήτρης",   gender: "male"   },
+    { name: "Γιάννης",    gender: "male"   },
+    { name: "Νίκος",      gender: "male"   },
+    { name: "Αντώνης",    gender: "male"   },
+    { name: "Χρήστος",    gender: "male"   },
+    { name: "Σταύρος",    gender: "male"   },
+    { name: "Παναγιώτης", gender: "male"   },
+    { name: "Θανάσης",    gender: "male"   },
+    { name: "Βασίλης",    gender: "male"   },
+    { name: "Μανώλης",    gender: "male"   },
+    { name: "Μαρία",      gender: "female" },
+    { name: "Ελένη",      gender: "female" },
+    { name: "Βασιλική",   gender: "female" },
+    { name: "Φωτεινή",    gender: "female" },
+    { name: "Σοφία",      gender: "female" },
+    { name: "Αικατερίνη", gender: "female" },
+    { name: "Δήμητρα",    gender: "female" },
+    { name: "Αντιγόνη",   gender: "female" },
+    { name: "Χαρά",       gender: "female" },
+    { name: "Ειρήνη",     gender: "female" },
+    { name: "Θεοδώρα",    gender: "female" },
+    { name: "Νίκη",       gender: "female" },
+];
+
+const MOODS = ["Κουρασμένος/η","Ανήσυχος/η","Ήρεμος/η","Πικραμένος/η","Αδιάφορος/η","Αισιόδοξος/η","Θυμωμένος/η"];
+const MARITAL_OPTIONS    = ["Ανύπαντρος/η","Παντρεμένος/η","Διαζευγμένος/η","Χήρος/α","Σε σχέση"];
+const OCCUPATION_OPTIONS = ["Εκπαιδευτικός","Γιατρός / Νοσηλευτής","Μηχανικός","Λογιστής","Αγρότης/ισσα","Έμπορος","Δημόσιος υπάλληλος","Οικιακός βίος","Συνταξιούχος","Ιδιωτικός υπάλληλος","Ελεύθερος επαγγελματίας","Άνεργος/η","Φοιτητής/ρια","Τεχνίτης","Οδηγός"];
+const HOUSING_OPTIONS    = ["Διαμέρισμα σε πόλη","Μονοκατοικία σε πόλη","Σπίτι σε χωριό","Σπίτι σε προάστιο","Μονοκατοικία στην εξοχή"];
+const EDUCATION_OPTIONS  = ["Δημοτικό","Γυμνάσιο","Λύκειο","ΙΕΚ / Τεχνική σχολή","ΑΕΙ / ΤΕΙ","Μεταπτυχιακό","Διδακτορικό"];
+const TREATMENT_OPTIONS  = ["Μόλις ξεκίνησε θεραπεία (< 3 μήνες)","Σε θεραπεία 3–12 μήνες","Σε θεραπεία 1–3 χρόνια","Σε θεραπεία > 3 χρόνια","Survivor — ολοκλήρωσε θεραπεία < 1 χρόνο πριν","Survivor — ολοκλήρωσε θεραπεία > 1 χρόνο πριν","Παρηγορητική αγωγή (palliative)"];
+
+// Cancer lists — value always Greek, label language-aware
+const CANCERS_MALE = [
+    { value: "καρκίνο στον πνεύμονα",         label: "Καρκίνος Πνεύμονα" },
+    { value: "καρκίνο στο παχύ έντερο",        label: "Καρκίνος Παχέος Εντέρου" },
+    { value: "καρκίνο στον προστάτη",          label: "Καρκίνος Προστάτη" },
+    { value: "λέμφωμα Hodgkin",                label: "Λέμφωμα Hodgkin" },
+    { value: "λέμφωμα non-Hodgkin",            label: "Λέμφωμα non-Hodgkin" },
+    { value: "λευχαιμία",                      label: "Λευχαιμία" },
+    { value: "καρκίνο στο πάγκρεας",           label: "Καρκίνος Παγκρέατος" },
+    { value: "μελάνωμα",                       label: "Μελάνωμα" },
+    { value: "καρκίνο στο νεφρό",              label: "Καρκίνος Νεφρού" },
+    { value: "καρκίνο στον θυρεοειδή",         label: "Καρκίνος Θυρεοειδούς" },
+    { value: "καρκίνο στο ήπαρ",               label: "Καρκίνος Ήπατος" },
+    { value: "καρκίνο στο στομάχι",            label: "Καρκίνος Στομάχου" },
+    { value: "καρκίνο στην ουροδόχο κύστη",    label: "Καρκίνος Ουροδόχου Κύστης" },
+    { value: "πολλαπλό μυέλωμα",               label: "Πολλαπλό Μυέλωμα" },
+    { value: "καρκίνο στον οισοφάγο",          label: "Καρκίνος Οισοφάγου" },
+    { value: "γλοιοβλάστωμα",                  label: "Γλοιοβλάστωμα (Εγκέφαλος)" },
+    { value: "μεσοθηλίωμα",                    label: "Μεσοθηλίωμα" },
+    { value: "σάρκωμα",                        label: "Σάρκωμα" },
+    { value: "καρκίνο στον στοματοφάρυγγα",    label: "Καρκίνος Στοματοφάρυγγα" },
+    { value: "καρκίνο στο δέρμα",              label: "Καρκίνος Δέρματος" },
+    { value: "καρκίνο στον λάρυγγα",           label: "Καρκίνος Λάρυγγα" },
+];
+const CANCERS_FEMALE = [
+    { value: "καρκίνο στον πνεύμονα",            label: "Καρκίνος Πνεύμονα" },
+    { value: "καρκίνο στο μαστό",                label: "Καρκίνος Μαστού" },
+    { value: "καρκίνο στο παχύ έντερο",          label: "Καρκίνος Παχέος Εντέρου" },
+    { value: "λέμφωμα Hodgkin",                  label: "Λέμφωμα Hodgkin" },
+    { value: "λέμφωμα non-Hodgkin",              label: "Λέμφωμα non-Hodgkin" },
+    { value: "λευχαιμία",                        label: "Λευχαιμία" },
+    { value: "καρκίνο στο πάγκρεας",             label: "Καρκίνος Παγκρέατος" },
+    { value: "μελάνωμα",                         label: "Μελάνωμα" },
+    { value: "καρκίνο στο νεφρό",                label: "Καρκίνος Νεφρού" },
+    { value: "καρκίνο στον θυρεοειδή",           label: "Καρκίνος Θυρεοειδούς" },
+    { value: "καρκίνο στο ήπαρ",                 label: "Καρκίνος Ήπατος" },
+    { value: "καρκίνο στο στομάχι",              label: "Καρκίνος Στομάχου" },
+    { value: "καρκίνο στην ουροδόχο κύστη",      label: "Καρκίνος Ουροδόχου Κύστης" },
+    { value: "καρκίνο στο ενδομήτριο",           label: "Καρκίνος Ενδομητρίου" },
+    { value: "καρκίνο στον τράχηλο της μήτρας",  label: "Καρκίνος Τραχήλου Μήτρας" },
+    { value: "καρκίνο στις ωοθήκες",             label: "Καρκίνος Ωοθηκών" },
+    { value: "πολλαπλό μυέλωμα",                 label: "Πολλαπλό Μυέλωμα" },
+    { value: "καρκίνο στον οισοφάγο",            label: "Καρκίνος Οισοφάγου" },
+    { value: "γλοιοβλάστωμα",                    label: "Γλοιοβλάστωμα (Εγκέφαλος)" },
+    { value: "μεσοθηλίωμα",                      label: "Μεσοθηλίωμα" },
+    { value: "σάρκωμα",                          label: "Σάρκωμα" },
+    { value: "καρκίνο στον στοματοφάρυγγα",      label: "Καρκίνος Στοματοφάρυγγα" },
+    { value: "καρκίνο στο δέρμα",                label: "Καρκίνος Δέρματος" },
+    { value: "καρκίνο στον λάρυγγα",             label: "Καρκίνος Λάρυγγα" },
+];
+const CANCERS_ALL = [...new Map([...CANCERS_MALE, ...CANCERS_FEMALE].map(c => [c.value, c])).values()];
+
+// ── SCROLL LISTS ───────────────────────────────────────────
+
+// Generic buildScrollList — items can be strings, or { label, value } objects
+// In English mode, label is the display string, value is what gets sent to server
+function buildScrollList(containerId, items, onSelect, hintId) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = "";
+
+    const rand = document.createElement("div");
+    rand.className = "scroll-item selected";
+    rand.textContent = t("random_item");
+    rand.dataset.value = "";
+    rand.onclick = function() {
+        el.querySelectorAll(".scroll-item").forEach(i => i.classList.remove("selected"));
+        this.classList.add("selected");
+        onSelect(null);
+        document.getElementById(hintId).textContent = t("selected_random");
+    };
+    el.appendChild(rand);
+
+    items.forEach(item => {
+        const displayLabel = typeof item === "string" ? item : (item.label || item.name || item);
+        const sendValue    = typeof item === "string" ? item : (item.value || item.name || item);
+        const div = document.createElement("div");
+        div.className = "scroll-item";
+        div.textContent = displayLabel;
+        div.dataset.value = sendValue;
+        div.onclick = function() {
+            el.querySelectorAll(".scroll-item").forEach(i => i.classList.remove("selected"));
+            this.classList.add("selected");
+            onSelect(sendValue);
+            document.getElementById(hintId).textContent = t("selected_prefix") + displayLabel;
+        };
+        el.appendChild(div);
+    });
+}
+
+// Variant with pre-selected value (used for cancer list after name selection)
+function buildScrollListWithValue(containerId, items, onSelect, hintId, preselected) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = "";
+
+    const rand = document.createElement("div");
+    rand.className = "scroll-item" + (!preselected ? " selected" : "");
+    rand.textContent = t("random_item");
+    rand.dataset.value = "";
+    rand.onclick = function() {
+        el.querySelectorAll(".scroll-item").forEach(i => i.classList.remove("selected"));
+        this.classList.add("selected");
+        onSelect(null);
+        document.getElementById(hintId).textContent = t("selected_random");
+    };
+    el.appendChild(rand);
+
+    items.forEach(item => {
+        const displayLabel = typeof item === "string" ? item : (item.label || item.name || item);
+        const sendValue    = typeof item === "string" ? item : (item.value || item.name || item);
+        const div = document.createElement("div");
+        div.className = "scroll-item" + (preselected === sendValue ? " selected" : "");
+        div.textContent = displayLabel;
+        div.dataset.value = sendValue;
+        div.onclick = function() {
+            el.querySelectorAll(".scroll-item").forEach(i => i.classList.remove("selected"));
+            this.classList.add("selected");
+            onSelect(sendValue);
+            document.getElementById(hintId).textContent = t("selected_prefix") + displayLabel;
+        };
+        el.appendChild(div);
+    });
+}
+
+function updateCancerList(gender) {
+    const rawList = gender === "male" ? CANCERS_MALE
+                  : gender === "female" ? CANCERS_FEMALE
+                  : CANCERS_ALL;
+    const items = rawList.map(c => ({
+        label: currentLang === "en" ? (CANCER_LABELS_EN[c.value] || c.label) : c.label,
+        value: c.value  // always Greek — server maps it
+    }));
+    buildScrollListWithValue("cancer-list", items,
+        v => { selectedCancer = v; },
+        "selected-cancer-hint",
+        selectedCancer
+    );
+}
+
+let selectedName       = null;
+let selectedMood       = null;
+let selectedCancer     = null;
+let selectedMarital    = null;
+let selectedOccupation = null;
+let selectedHousing    = null;
+let selectedEducation  = null;
+let selectedTreatment  = null;
+let selectedBackground = "backgrounds/1.png";
+let selectedDurationSec = 1800;
+
+// ── BACKGROUND GALLERY ─────────────────────────────────────
+let BG_FILES = [];
+
+async function loadBgFiles() {
+    try {
+        const res = await apiFetch(`${API}/backgrounds`);
+        BG_FILES = await res.json();
+        if (BG_FILES.length > 0 && selectedBackground === "backgrounds/1.png") {
+            selectedBackground = BG_FILES[0];
+        }
+    } catch (e) {
+        BG_FILES = [];
+    }
+}
+
+function _buildBgGalleryFor(galleryId) {
+    const gallery = document.getElementById(galleryId);
+    if (!gallery) return;
+    gallery.innerHTML = "";
+
+    const noneTile = document.createElement("div");
+    noneTile.className = "bg-tile none-tile" + (selectedBackground === null ? " selected" : "");
+    noneTile.innerHTML = `<span>${t("no_background")}</span><div class="bg-check">✓</div>`;
+    noneTile.onclick = () => {
+        selectedBackground = null;
+        document.querySelectorAll(".bg-gallery .bg-tile").forEach(tile => tile.classList.remove("selected"));
+        document.querySelectorAll(".bg-tile.none-tile").forEach(nt => nt.classList.add("selected"));
+    };
+    gallery.appendChild(noneTile);
+
+    BG_FILES.forEach((path, i) => {
+        const tile = document.createElement("div");
+        tile.className = "bg-tile" + (selectedBackground === path ? " selected" : "");
+        tile.innerHTML = `<img src="${path}" alt="bg${i+1}" onerror="this.parentElement.style.display='none'">
+                          <div class="bg-check">✓</div>`;
+        tile.onclick = () => {
+            selectedBackground = path;
+            document.querySelectorAll(".bg-gallery .bg-tile").forEach(t2 => t2.classList.remove("selected"));
+            document.querySelectorAll(`[src="${path}"]`).forEach(img => {
+                img.closest(".bg-tile").classList.add("selected");
+            });
+            const nones = document.querySelectorAll(".bg-tile.none-tile");
+            nones.forEach(n => n.classList.remove("selected"));
+        };
+        gallery.appendChild(tile);
+    });
+}
+
+function buildBgGallery() { _buildBgGalleryFor("bg-gallery"); }
+function buildBgGalleryCustom() { _buildBgGalleryFor("bg-gallery-custom"); }
+
+function applyBackground(path) {
+    const bg = document.getElementById("chat-bg");
+    if (path) {
+        bg.style.backgroundImage = `url('${path}')`;
+        bg.style.opacity = "0.13";
+    } else {
+        bg.style.backgroundImage = "none";
+    }
+}
+
+// ── TIMER PRESETS ──────────────────────────────────────────
+// ── SETUP TAB SWITCHING ───────────────────────────────────
+let activeSetupTab = "preset";
+
+function switchSetupTab(tab) {
+    activeSetupTab = tab;
+    document.getElementById("panel-preset").classList.toggle("active", tab === "preset");
+    document.getElementById("panel-custom").classList.toggle("active", tab === "custom");
+    document.getElementById("tab-preset-btn").classList.toggle("active", tab === "preset");
+    document.getElementById("tab-custom-btn").classList.toggle("active", tab === "custom");
+    // Sync timer buttons in the newly shown panel
+    syncTimerButtons();
+}
+
+function syncTimerButtons() {
+    const mins = Math.round(selectedDurationSec / 60).toString();
+    document.querySelectorAll(".timer-preset").forEach(b => {
+        b.classList.toggle("selected", b.dataset.minutes === mins);
+    });
+    const presetMatch = [5,15,20,30].includes(Number(mins));
+    const customValP  = document.getElementById("timer-custom");
+    const customValC  = document.getElementById("timer-custom-c");
+    if (!presetMatch) {
+        if (customValP) customValP.value = mins;
+        if (customValC) customValC.value = mins;
+    } else {
+        if (customValP) customValP.value = "";
+        if (customValC) customValC.value = "";
+    }
+}
+
+function selectTimer(minutes, btn) {
+    selectedDurationSec = minutes * 60;
+    // Deselect all timer-preset buttons across both panels
+    document.querySelectorAll(".timer-preset").forEach(b => b.classList.remove("selected"));
+    // Select all buttons with same data-minutes (one in each panel)
+    document.querySelectorAll(`.timer-preset[data-minutes="${minutes}"]`).forEach(b => b.classList.add("selected"));
+    document.getElementById("timer-custom").value   = "";
+    const cc = document.getElementById("timer-custom-c");
+    if (cc) cc.value = "";
+}
+
+function onCustomTimer(input) {
+    const v = parseInt(input.value);
+    if (v > 0) {
+        selectedDurationSec = v * 60;
+        document.querySelectorAll(".timer-preset").forEach(b => b.classList.remove("selected"));
+        // Mirror to the other panel's custom input
+        const cc = document.getElementById("timer-custom-c");
+        if (cc && cc !== input) cc.value = input.value;
+        const cp = document.getElementById("timer-custom");
+        if (cp && cp !== input) cp.value = input.value;
+    }
+}
+
+function onCustomTimerC(input) { onCustomTimer(input); }
+
+// ── FIELD TRANSLATION MAPS (GR → EN) ──────────────────────
+const MARITAL_EN_MAP = {
+    "Ανύπαντρος/η":   "Single",
+    "Παντρεμένος/η":  "Married",
+    "Διαζευγμένος/η": "Divorced",
+    "Χήρος/α":        "Widowed",
+    "Σε σχέση":       "In a relationship",
+};
+const OCCUPATION_EN_MAP = {
+    "Εκπαιδευτικός":           "Teacher",
+    "Γιατρός / Νοσηλευτής":   "Doctor / Nurse",
+    "Μηχανικός":               "Engineer",
+    "Λογιστής":                "Accountant",
+    "Αγρότης/ισσα":            "Farmer",
+    "Έμπορος":                 "Merchant",
+    "Δημόσιος υπάλληλος":      "Civil servant",
+    "Οικιακός βίος":           "Homemaker",
+    "Συνταξιούχος":            "Retired",
+    "Ιδιωτικός υπάλληλος":    "Private employee",
+    "Ελεύθερος επαγγελματίας": "Self-employed",
+    "Άνεργος/η":               "Unemployed",
+    "Φοιτητής/ρια":            "Student",
+    "Τεχνίτης":                "Tradesperson",
+    "Οδηγός":                  "Driver",
+};
+const HOUSING_EN_MAP = {
+    "Διαμέρισμα σε πόλη":      "Apartment in city",
+    "Μονοκατοικία σε πόλη":    "House in city",
+    "Σπίτι σε χωριό":          "Village home",
+    "Σπίτι σε προάστιο":       "Suburban home",
+    "Μονοκατοικία στην εξοχή": "House in countryside",
+};
+const EDUCATION_EN_MAP = {
+    "Δημοτικό":              "Primary school",
+    "Γυμνάσιο":              "Middle school",
+    "Λύκειο":                "High school",
+    "ΙΕΚ / Τεχνική σχολή":  "Vocational school",
+    "ΑΕΙ / ΤΕΙ":            "University",
+    "Μεταπτυχιακό":         "Master's degree",
+    "Διδακτορικό":           "Doctorate",
+};
+const TREATMENT_EN_MAP = {
+    "Μόλις ξεκίνησε θεραπεία (< 3 μήνες)":      "Just started treatment (< 3 months)",
+    "Σε θεραπεία 3–12 μήνες":                    "In treatment 3–12 months",
+    "Σε θεραπεία 1–3 χρόνια":                    "In treatment 1–3 years",
+    "Σε θεραπεία > 3 χρόνια":                    "In treatment > 3 years",
+    "Survivor — ολοκλήρωσε θεραπεία < 1 χρόνο πριν": "Survivor — completed < 1 year ago",
+    "Survivor — ολοκλήρωσε θεραπεία > 1 χρόνο πριν": "Survivor — completed > 1 year ago",
+    "Παρηγορητική αγωγή (palliative)":           "Palliative care",
+};
+
+function translateField(value, map) {
+    if (!value) return "";
+    return (currentLang === "en" && map[value]) ? map[value] : value;
+}
+
+// ── AVATAR LOGIC ───────────────────────────────────────────
+let currentAvatarPath   = null;
+let currentPersonaExtra = {};
+
+function getAvatarPath(gender, age) {
+    const g = gender === "male" ? "male" : "female";
+    const stage = age < 35 ? "young" : age < 55 ? "middle" : "elder";
+    return `avatars/${g}_${stage}.svg`;
+}
+
+function setPersonaAvatar(gender, age) {
+    currentAvatarPath = getAvatarPath(gender, age);
+    const avatarEl = document.getElementById("persona-avatar");
+    avatarEl.src = currentAvatarPath;
+    avatarEl.style.display = "block";
+}
+
+// ── OPEN SETUP ─────────────────────────────────────────────
+async function openSetup() {
+    selectedName = null; selectedMood = null; selectedCancer = null;
+    selectedMarital = null; selectedOccupation = null;
+    selectedHousing = null; selectedEducation = null; selectedTreatment = null;
+    document.getElementById("setup-age").value = "";
+    document.getElementById("custom-desc-input").value = "";
+
+    // Reset to preset tab
+    activeSetupTab = "preset";
+    switchSetupTab("preset");
+
+    document.querySelectorAll(".timer-preset").forEach(b => {
+        b.classList.toggle("selected", b.dataset.minutes === "30");
+    });
+    selectedDurationSec = 1800;
+    document.getElementById("timer-custom").value   = "";
+    const cc = document.getElementById("timer-custom-c");
+    if (cc) cc.value = "";
+
+    await loadBgFiles();
+    buildBgGallery();
+    buildBgGalleryCustom();
+
+    // Names — display is transliterated in EN, value is always Greek
+    const nameItems = NAMES_ALL.map(n => ({
+        label: currentLang === "en" ? (NAME_EN_MAP_FRONTEND[n.name] || n.name) : n.name,
+        value: n.name,
+        gender: n.gender
+    }));
+    buildScrollList("name-list", nameItems,
+        v => {
+            selectedName = v;  // v is always Greek (the value)
+            const entry = NAMES_ALL.find(n => n.name === v);
+            updateCancerList(entry ? entry.gender : null);
+        },
+        "selected-name-hint"
+    );
+
+    // Moods — in EN, display and value are both English strings
+    const moods = currentLang === "en" ? MOODS_EN : MOODS;
+    buildScrollList("mood-list", moods, v => { selectedMood = v; }, "selected-mood-hint");
+
+    updateCancerList(null);
+
+    // Other lists — in EN, display and value are English strings (server uses them in EN persona_msg)
+    const marital    = currentLang === "en" ? MARITAL_OPTIONS_EN    : MARITAL_OPTIONS;
+    const occupation = currentLang === "en" ? OCCUPATION_OPTIONS_EN : OCCUPATION_OPTIONS;
+    const housing    = currentLang === "en" ? HOUSING_OPTIONS_EN    : HOUSING_OPTIONS;
+    const education  = currentLang === "en" ? EDUCATION_OPTIONS_EN  : EDUCATION_OPTIONS;
+    const treatment  = currentLang === "en" ? TREATMENT_OPTIONS_EN  : TREATMENT_OPTIONS;
+
+    buildScrollList("marital-list",    marital,    v => { selectedMarital    = v; }, "selected-marital-hint");
+    buildScrollList("occupation-list", occupation, v => { selectedOccupation = v; }, "selected-occupation-hint");
+    buildScrollList("housing-list",    housing,    v => { selectedHousing    = v; }, "selected-housing-hint");
+    buildScrollList("education-list",  education,  v => { selectedEducation  = v; }, "selected-education-hint");
+    buildScrollList("treatment-list",  treatment,  v => { selectedTreatment  = v; }, "selected-treatment-hint");
+
+    document.getElementById("setup-overlay").classList.add("show");
+}
+
+function closeSetup() {
+    document.getElementById("setup-overlay").classList.remove("show");
+}
+
+function confirmSetup() {
+    const isCustom = activeSetupTab === "custom";
+    const customDesc = (document.getElementById("custom-desc-input").value || "").trim();
+
+    // Preset tab: read age from input; Custom tab: no age field (random)
+    const ageInput = document.getElementById("setup-age").value;
+    let age = (!isCustom && ageInput) ? parseInt(ageInput) : null;
+    if (age !== null && age > 90) age = 90;
+    if (age !== null && age < 18) age = 18;
+
+    closeSetup();
+    initSimulation({
+        name:              isCustom ? null : selectedName,
+        age,
+        mood:              isCustom ? null : selectedMood,
+        cancerType:        isCustom ? null : selectedCancer,
+        marital:           isCustom ? null : selectedMarital,
+        occupation:        isCustom ? null : selectedOccupation,
+        housing:           isCustom ? null : selectedHousing,
+        education:         isCustom ? null : selectedEducation,
+        treatmentPhase:    isCustom ? null : selectedTreatment,
+        customDescription: isCustom ? customDesc : null,
+        durationSec:       selectedDurationSec,
+        background:        selectedBackground
+    });
+}
+
+// ── UTILS ──────────────────────────────────────────────────
+function setStatus(s) {
+    statusDot.className = s === "online"  ? "online"
+                        : s === "loading" ? "loading"
+                        : "";
+}
+
+function appendMsg(role, text, ts) {
+    text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+
+    if (role === "system" || role === "intro") {
+        const div = document.createElement("div");
+        div.className = `msg ${role}`;
+        div.textContent = text;
+        chatWindow.appendChild(div);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return div;
+    }
+
+    const row = document.createElement("div");
+    row.className = `msg-row ${role === "user" ? "user-row" : ""}`;
+
+    const avatarImg = document.createElement("img");
+    avatarImg.className = "msg-avatar";
+    if (role === "patient" && currentAvatarPath) {
+        avatarImg.src = currentAvatarPath;
+        avatarImg.onerror = () => avatarImg.style.display = "none";
+    } else {
+        avatarImg.style.display = "none";
+    }
+
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;flex-direction:column;gap:2px;max-width:78%";
+    if (role === "user") wrap.style.alignItems = "flex-end";
+
+    const bubble = document.createElement("div");
+    bubble.className = `msg ${role}`;
+    bubble.style.maxWidth = "100%";
+    bubble.textContent = text;
+
+    wrap.appendChild(bubble);
+
+    if (ts) {
+        const timeEl = document.createElement("div");
+        timeEl.style.cssText = `font-size:10px;color:var(--muted);padding:0 4px;${role==="user"?"text-align:right":""}`;
+        timeEl.textContent = ts;
+        wrap.appendChild(timeEl);
+    }
+
+    if (role === "patient") {
+        row.appendChild(avatarImg);
+        row.appendChild(wrap);
+    } else {
+        row.appendChild(wrap);
+    }
+
+    chatWindow.appendChild(row);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return bubble;
+}
+
+function appendTypingRow() {
+    const row = document.createElement("div");
+    row.className = "msg-row";
+    row.id = "typing-row";
+
+    const avatarImg = document.createElement("img");
+    avatarImg.className = "msg-avatar";
+    if (currentAvatarPath) {
+        avatarImg.src = currentAvatarPath;
+        avatarImg.onerror = () => avatarImg.style.display = "none";
+    } else {
+        avatarImg.style.display = "none";
+    }
+
+    const dots = document.createElement("div");
+    dots.className = "typing";
+    dots.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+
+    row.appendChild(avatarImg);
+    row.appendChild(dots);
+    chatWindow.appendChild(row);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function appendTyping() { appendTypingRow(); }
+
+function removeTyping() {
+    const el = document.getElementById("typing-row");
+    if (el) el.remove();
+    const old = document.getElementById("typing-indicator");
+    if (old) old.remove();
+}
+
+let warningShown = false;
+
+function updateTimer() {
+    const m = Math.floor(timeLeft / 60).toString().padStart(2, "0");
+    const s = (timeLeft % 60).toString().padStart(2, "0");
+    timerEl.textContent = `${m}:${s}`;
+    timerEl.className = timeLeft <= 60 ? "warning" : "";
+}
+
+// ── INIT SIMULATION ────────────────────────────────────────
+async function initSimulation(params = {}) {
+    if (isRunning || sending) return;
+    if (timerId !== null) { clearInterval(timerId); timerId = null; }
+    chatWindow.innerHTML = "";
+    sessionId     = null;
+    timeLeft      = params.durationSec || 1800;
+    isRunning     = false;
+    warningShown  = false;
+    currentAvatarPath = null;
+    resetMoodIndicator();
+    updateTimer();
+
+    applyBackground(params.background !== undefined ? params.background : "backgrounds/1.png");
+
+    startBtn.disabled  = true;
+    saveBtn.disabled   = true;
+    endBtn.disabled    = true;
+    userInput.disabled = true;
+    sendBtn.disabled   = true;
+    setStatus("loading");
+    personaName.textContent = t("persona_loading");
+
+    const avatarEl = document.getElementById("persona-avatar");
+    avatarEl.style.display = "none";
+
+    appendMsg("system", t("notifying_patient"));
+    await new Promise(r => setTimeout(r, 2000));
+
+    const reqBody = { language: currentLang, duration_sec: params.durationSec || 1800, background: params.background || null };  // ← sends current language to server
+    if (params.age)               reqBody.age                = params.age;
+    if (params.name)              reqBody.name               = params.name;
+    if (params.mood)              reqBody.mood               = params.mood;
+    if (params.cancerType)        reqBody.cancer_type        = params.cancerType;
+    if (params.marital)           reqBody.marital            = params.marital;
+    if (params.occupation)        reqBody.occupation         = params.occupation;
+    if (params.housing)           reqBody.housing            = params.housing;
+    if (params.education)         reqBody.education          = params.education;
+    if (params.treatmentPhase)    reqBody.treatment_phase    = params.treatmentPhase;
+    if (params.customDescription) reqBody.custom_description = params.customDescription;
+
+    try {
+        const res  = await apiFetch(`${API}/start`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(reqBody)
+        });
+        const data = await res.json();
+
+        sessionId = data.session_id;
+
+        // Avatar — use internal Greek name for gender lookup
+        const nameEntry = NAMES_ALL.find(n => n.name === data.persona_name);
+        const gender = data.persona_gender || (nameEntry ? nameEntry.gender : "male");
+        setPersonaAvatar(gender, data.persona_age);
+
+        // Persona card — use display fields for shown name/diagnosis
+        const nameDisplay = data.persona_name_display || data.persona_name;
+        const diagDisplay = data.persona_diag_display  || data.persona_diag;
+        const charDisplay = currentLang === "en"
+            ? (CHAR_EPITHETS_EN_DISPLAY[data.persona_char] || data.persona_char)
+            : data.persona_char;
+
+        const treatmentShort = (data.persona_treatment || "")
+            .replace("Survivor — ","")
+            .replace("Μόλις ξεκίνησε ","")
+            .replace("Just started ","");
+
+        personaName.innerHTML = `<strong>${escapeHtml(nameDisplay)}</strong>, ${escapeHtml(data.persona_age)} ${t("years_old")}<br>
+            <span style="color:var(--accent);font-style:italic;font-size:12px">${escapeHtml(diagDisplay)}</span><br>
+            <span style="font-size:11px;color:var(--muted)">${t("stage_label")} ${escapeHtml(data.persona_stage)}${data.persona_mood ? ' · ' + escapeHtml(data.persona_mood) : ''}${charDisplay ? ' · ' + escapeHtml(charDisplay) : ''}</span>
+            ${data.persona_occupation ? `<br><span style="font-size:11px;color:var(--muted)">💼 ${escapeHtml(data.persona_occupation)}</span>` : ''}
+            ${data.persona_treatment  ? `<br><span style="font-size:11px;color:var(--muted)">🏥 ${escapeHtml(treatmentShort)}</span>` : ''}`;
+
+        chatWindow.innerHTML = "";
+        const welcomeTs = nowTs();
+        if (data.system_intro) appendMsg("intro", data.system_intro);
+        appendMsg("patient", data.welcome, welcomeTs);
+
+        userInput.disabled = true;
+        sendBtn.disabled   = true;
+        endBtn.disabled    = false;
+        userInput.placeholder = t("placeholder_active");
+        setStatus("online");
+        isRunning = true;
+
+        currentPersonaExtra = {
+            marital:    translateField(data.persona_marital    || "", MARITAL_EN_MAP),
+            occupation: translateField(data.persona_occupation || "", OCCUPATION_EN_MAP),
+            housing:    translateField(data.persona_housing    || "", HOUSING_EN_MAP),
+            education:  translateField(data.persona_education  || "", EDUCATION_EN_MAP),
+            treatment:  translateField(data.persona_treatment  || "", TREATMENT_EN_MAP),
+        };
+
+        showTipsPopup(nameDisplay, data.persona_char, gender, data.system_intro, data.persona_age, data.persona_diag);
+
+        // Timer
+        if (timerId !== null) clearInterval(timerId);
+        timerId = setInterval(async () => {
+            timeLeft--;
+            updateTimer();
+
+            if (timeLeft === 60 && !warningShown) {
+                warningShown = true;
+                appendMsg("system", t("warning_1min"));
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(timerId);
+                timerId = null;
+
+                await endSession(t("session_ended_time"));
+            }
+        }, 1000);
+
+        loadSessionsList();
+        startBtn.disabled = true;
+
+    } catch (err) {
+        chatWindow.innerHTML = "";
+        appendMsg("system", t("server_error") + " " + err.message);
+        startBtn.disabled = false;
+        setStatus("");
+        personaName.textContent = "—";
+    }
+}
+
+// ── SEND MESSAGE ───────────────────────────────────────────
+async function sendMessage() {
+    if (sending || !isRunning) return;
+    sending = true;
+    inFlight = performSendMessage();
+    try { await inFlight; } finally { sending = false; }
+}
+async function performSendMessage() {
+    const text = userInput.value.trim();
+    if (!text || !sessionId) return;
+
+    const userTs = nowTs();
+    appendMsg("user", text, userTs);
+    userInput.value = "";
+    userInput.disabled = true;
+    sendBtn.disabled   = true;
+    setStatus("loading");
+    appendTyping();
+
+    let endedByPatient = false;
+
+    try {
+        const res  = await apiFetch(`${API}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId, message: text })
+        });
+        const data = await res.json();
+
+        removeTyping();
+        appendMsg("patient", data.reply, data.ts || nowTs());
+        setStatus("online");
+
+        if (data.mood_score !== undefined) updateMoodIndicator(data.mood_score);
+
+        if (data.ended) endedByPatient = true;
+    } catch (err) {
+        removeTyping();
+        appendMsg("system", t("comm_error") + " " + err.message);
+        userInput.value = text;
+        setStatus("");
+    } finally {
+        if (endedByPatient) {
+            await endSession(t("session_ended_walkout"), true, false);
+        } else if (isRunning) {
+            userInput.disabled = false;
+            sendBtn.disabled   = false;
+            userInput.focus();
+        }
+    }
+}
+
+// ── SAVE ──────────────────────────────────────────────────
+async function saveSession() {
+    if (!sessionId) return;
+    await inFlight;
+    try {
+        const res  = await apiFetch(`${API}/save`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId })
+        });
+        const data = await res.json();
+        alert(t("save_ok_prefix") + data.file);
+        loadSessionsList();
+        loadStats();
+    } catch (err) {
+        alert(t("save_failed"));
+    }
+}
+
+// ── END SESSION ────────────────────────────────────────────
+async function endSession(reason, autoSave = true, waitForReply = true) {
+    if (timerId !== null) { clearInterval(timerId); timerId = null; }
+    isRunning = false;
+    userInput.disabled = true;
+    sendBtn.disabled   = true;
+    endBtn.disabled    = true;
+    startBtn.disabled  = false;
+    saveBtn.disabled   = false;
+    setStatus("");
+
+    if (waitForReply) await inFlight;
+    appendMsg("system", `[${reason}]`);
+
+    if (autoSave && sessionId) {
+        try {
+            await apiFetch(`${API}/save`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            loadSessionsList();
+            loadStats();
+        } catch (e) { appendMsg("system", t("save_failed") + " " + e.message); }
+    }
+}
+
+async function endEarly() {
+    if (!confirm(t("confirm_end"))) return;
+    const wantSave = confirm(t("confirm_save"));
+    await endSession(t("session_ended_early"), false);
+
+    if (wantSave && sessionId) {
+        try {
+            const res  = await apiFetch(`${API}/save`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            const data = await res.json();
+            appendMsg("system", t("save_ok_prefix") + data.file);
+            loadSessionsList();
+            loadStats();
+        } catch (e) {
+            appendMsg("system", t("save_failed"));
+        }
+    }
+}
+
+// ── SESSIONS LIST ──────────────────────────────────────────
+async function loadSessionsList() {
+    try {
+        const res  = await apiFetch(`${API}/sessions`);
+        const list = await res.json();
+        const el   = document.getElementById("sessions-list");
+        el.innerHTML = "";
+
+        if (!list.length) {
+            el.innerHTML = `<div style="font-size:11px;color:var(--muted);padding:6px">${t("no_saved")}</div>`;
+            return;
+        }
+
+        list.slice(0, 15).forEach(s => {
+            const p    = s.persona || {};
+            const date = s.saved ? s.saved.substring(0, 16).replace("T", " ") : "";
+            // Display name: for EN sessions, use transliteration if available
+            const displayName = (s.language === "en" ? (NAME_EN_MAP_FRONTEND[p.name] || p.name) : p.name) || "—";
+            const displayDiag = (s.language === "en" ? (CANCER_LABELS_EN[p.diag] || p.diag) : p.diag) || "";
+            const div  = document.createElement("div");
+            div.className = "session-item";
+            div.innerHTML = `<b>${escapeHtml(displayName)}, ${escapeHtml(p.age || "")} ${t("years_old")}</b>${escapeHtml(displayDiag)}<br><span style="font-size:10px">${escapeHtml(date)} · ${escapeHtml(s.turns)} ${t("questions")}</span>`;
+            div.onclick = () => viewSession(s.file);
+            el.appendChild(div);
+        });
+    } catch (e) {}
+}
+
+// ── VIEW SESSION ───────────────────────────────────────────
+async function viewSession(filename) {
+    try {
+        const res  = await apiFetch(`${API}/sessions/${encodeURIComponent(filename)}`);
+        const data = await res.json();
+        const p    = data.persona || {};
+        const lang = data.language || "el";
+
+        const displayName = lang === "en" ? (NAME_EN_MAP_FRONTEND[p.name] || p.name) : p.name;
+        const displayDiag = lang === "en" ? (CANCER_LABELS_EN[p.diag] || p.diag) : p.diag;
+
+        document.getElementById("modal-title").textContent =
+            `${escapeHtml(displayName)}, ${p.age} ${lang === "en" ? "y/o" : "ετών"} — ${escapeHtml(displayDiag)}`;
+
+        const body = document.getElementById("modal-body");
+        body.innerHTML = "";
+
+        const btnRow = document.createElement("div");
+        btnRow.style = "display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;";
+        body.appendChild(btnRow);
+
+        (data.history || []).forEach(m => {
+            if (m.role === "system") return;
+            const div = document.createElement("div");
+            div.className = `modal-msg ${m.role === "user" ? "user" : "patient"}`;
+            div.textContent = m.content;
+            body.appendChild(div);
+        });
+
+        document.getElementById("modal-overlay").classList.add("show");
+    } catch (e) {
+        alert(t("load_failed"));
+    }
+}
+
+function closeModal() {
+    document.getElementById("modal-overlay").classList.remove("show");
+}
+
+// ── STATS ──────────────────────────────────────────────────
+async function loadStats() {
+    try {
+        const res  = await apiFetch(`${API}/stats`);
+        const data = await res.json();
+        const el   = document.getElementById("stats-content");
+
+        if (data.total_sessions === 0) {
+            el.innerHTML = `<span style="color:var(--muted);font-size:10px">${t("stat_no_data")}</span>`;
+            return;
+        }
+
+        let html = `
+            <div class="stat-row">
+                <span>${t("stat_total")}</span>
+                <span class="stat-val gold">${data.total_sessions}</span>
+            </div>
+            <div class="stat-row">
+                <span>${t("stat_avg")}</span>
+                <span class="stat-val">${data.avg_turns}</span>
+            </div>`;
+
+        if (data.top_diagnoses && data.top_diagnoses.length) {
+            const maxCount = data.top_diagnoses[0][1];
+            html += `<div style="margin-top:8px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">${t("stat_top_diag")}</div>
+                     <div class="stat-diag-list">`;
+            data.top_diagnoses.forEach(([diag, count]) => {
+                // Show English label in EN mode
+                const diagDisplay = currentLang === "en"
+                    ? (CANCER_LABELS_EN[diag] || diag)
+                    : diag.replace("καρκίνο στον ","").replace("καρκίνο στην ","").replace("καρκίνο στο ","").replace("καρκίνο στη ","").replace("καρκίνο ","").trim();
+                const pct = Math.round((count / maxCount) * 100);
+                html += `<div class="stat-diag-item">
+                    <span style="min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(diagDisplay)}">${escapeHtml(diagDisplay)}</span>
+                    <div class="stat-diag-bar-wrap"><div class="stat-diag-bar" style="width:${pct}%"></div></div>
+                    <span class="stat-diag-count">${count}</span>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+
+        el.innerHTML = html;
+    } catch (e) {
+        document.getElementById("stats-content").innerHTML =
+            `<span style="color:var(--muted);font-size:10px">${t("stat_offline")}</span>`;
+    }
+}
+
+// ── KEYBOARD ───────────────────────────────────────────────
+userInput.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+});
+
+// ── INIT ───────────────────────────────────────────────────
+showLangModal();   // Show language popup first; loadSessionsList + loadStats called by selectLang
+</script>
+</body>
+</html>
