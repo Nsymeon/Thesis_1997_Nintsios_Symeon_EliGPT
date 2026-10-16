@@ -17,8 +17,7 @@ import uvicorn
 BASE_DIR = Path(__file__).resolve().parent
 LM_BASE_URL = os.environ.get("LM_BASE_URL", "http://127.0.0.1:1234/v1").rstrip("/")
 LM_STUDIO_URL = LM_BASE_URL + "/chat/completions"
-MODEL_NAME = os.environ.get("LM_MODEL", "").strip()
-LM_TIMEOUT = float(os.environ.get("LM_TIMEOUT", "180"))
+MODEL_NAME = os.environ.get("LM_MODEL", "google/gemma-4-26b-a4b").strip()
 LM_HEADERS = {"Authorization": "Bearer " + os.environ["LM_API_TOKEN"]} if os.environ.get("LM_API_TOKEN") else {}
 SESSIONS_DIR = Path(os.environ.get("ELIGPT_SESSIONS_DIR", str(BASE_DIR / "sessions"))).resolve()
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
@@ -963,11 +962,11 @@ def clean_answer(text: str, language: str = "el") -> str:
 # ============================================================
 app = FastAPI(title="EliGPT — Gemma 4 Backend")
 app.add_middleware(
-    CORSMiddleware, allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"], allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type"]
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
 class StartReq(BaseModel):
-    age:                Optional[int]  = Field(default=None, ge=18, le=90)
+    age:                Optional[int]  = None
     session_id:         Optional[str]  = None
     name:               Optional[str]  = None
     mood:               Optional[str]  = None
@@ -977,14 +976,14 @@ class StartReq(BaseModel):
     housing:            Optional[str]  = None
     education:          Optional[str]  = None
     treatment_phase:    Optional[str]  = None
-    language:           Literal["el", "en"] = "el"   # "el" | "en"
-    duration_sec: Optional[int] = Field(default=None, ge=60, le=86400)
+    language:           Optional[str]  = "el"   # "el" | "en"
+    duration_sec: Optional[int] = None
     background: Optional[str] = None
-    custom_description: Optional[str] = Field(default=None, max_length=2000)   # free-text character description (Custom tab)
+    custom_description: Optional[str] = None   # free-text character description (Custom tab)
 
 class ChatReq(BaseModel):
     session_id: str
-    message:    str = Field(min_length=1, max_length=8000)
+    message:    str
 
 class SaveReq(BaseModel):
     session_id: str
@@ -1184,15 +1183,12 @@ async def process_chat(req: ChatReq, session: dict):
     payload, selected_model = await lm_completion(messages)
     try:
         msg_data = payload["choices"][0]["message"]
-        raw_content = msg_data.get("content")
-        if not isinstance(raw_content, str) or not raw_content.strip():
-            raise ValueError("Empty final content")
-        # Never show reasoning_content as the patient's response.
-        raw_content = re.sub(r"<think>.*?</think>", "", raw_content, flags=re.S | re.I).strip()
-        if not raw_content or "<think>" in raw_content.lower():
-            raise ValueError("No final answer")
-    except (KeyError, IndexError, TypeError, ValueError):
-        raise HTTPException(502, "LM Studio returned no final answer. Disable Thinking and try again.")
+    except (KeyError, IndexError, TypeError):
+        raise HTTPException(502, "LM Studio returned an unexpected response.")
+    raw_content = msg_data.get("content") or msg_data.get("reasoning_content") or ""
+    raw_content = re.sub(r"<think>.*?</think>", "", raw_content, flags=re.S | re.I).strip()
+    if not raw_content:
+        raise HTTPException(502, "LM Studio returned an empty answer.")
     final_answer = clean_answer(extract_patient_answer(raw_content, language), language)
     latency_ms = round((time.perf_counter() - started) * 1000)
 
@@ -1326,33 +1322,24 @@ def session_path(filename: str) -> Path:
 
 async def lm_request(method: str, endpoint: str, payload=None):
     try:
-        async with httpx.AsyncClient(timeout=LM_TIMEOUT, headers=LM_HEADERS, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=None, headers=LM_HEADERS, trust_env=False) as client:
             response = await client.request(method, LM_BASE_URL + endpoint, json=payload)
             response.raise_for_status()
             return response.json()
-    except httpx.TimeoutException:
-        raise HTTPException(504, "LM Studio timed out. Try a smaller model or increase LM_TIMEOUT.")
     except httpx.RequestError:
         raise HTTPException(503, "Cannot connect to LM Studio. Start its local server on port 1234.")
     except httpx.HTTPStatusError as error:
-        raise HTTPException(502, f"LM Studio returned HTTP {error.response.status_code}. Check its model and server settings.")
+        raise HTTPException(502, f"LM Studio returned HTTP {error.response.status_code}: {error.response.text[:300]}")
     except ValueError:
         raise HTTPException(502, "LM Studio returned invalid JSON.")
 
 async def lm_completion(messages):
-    model = MODEL_NAME
-    if not model:
-        data = await lm_request("GET", "/models")
-        candidates = [m.get("id") for m in data.get("data", []) if m.get("id") and "embed" not in m["id"].lower()]
-        if len(candidates) != 1:
-            raise HTTPException(503, "Set LM_MODEL to the exact model identifier shown in LM Studio; automatic selection requires exactly one model.")
-        model = candidates[0]
     payload = await lm_request("POST", "/chat/completions", {
-        "model": model, "messages": messages, "temperature": 0.3,
+        "model": MODEL_NAME, "messages": messages, "temperature": 0.3,
         "max_tokens": 512, "top_p": 0.85, "frequency_penalty": 0.5,
         "presence_penalty": 0.3, "stream": False,
     })
-    return payload, model
+    return payload, MODEL_NAME
 
 @app.get("/", include_in_schema=False)
 def index():
@@ -1373,7 +1360,7 @@ for folder in ("backgrounds", "avatars"):
 # ============================================================
 if __name__ == "__main__":
     print(f"🚀 EliGPT with Gemma 4 26B — http://127.0.0.1:8000")
-    print(f"🤖 Model: {MODEL_NAME or 'auto (one model only)'}")
+    print(f"🤖 Model: {MODEL_NAME}")
     print(f"📁 Sessions: {SESSIONS_DIR.absolute()}")
     print(f"💡 Σημαντικό: Απενεργοποίησε το 'Enable Thinking' στο LM Studio preset!")
     uvicorn.run(app, host="127.0.0.1", port=8000)
