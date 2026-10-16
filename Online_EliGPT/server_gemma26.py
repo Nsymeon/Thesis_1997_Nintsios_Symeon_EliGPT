@@ -1,4 +1,4 @@
-import os, sys, json, re, random, datetime, uuid, asyncio, time
+import os, sys, json, re, random, datetime, uuid, time
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,24 +17,25 @@ sys.stderr.reconfigure(line_buffering=True)
 # ============================================================
 OPENROUTER_URL      = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
-MODEL_NAME           = os.environ.get("LM_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+MODEL_NAME          = os.environ.get("LM_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
 
 # Direct Google Gemini API (first-party hosting of Gemma 4 — bypasses
-# OpenRouter's free-tier community routing entirely). Tried FIRST in /chat;
-# on any failure we fall back to the OpenRouter chain below.
+# OpenRouter's free-tier community routing entirely). Tried FIRST in /chat
+# (2 attempts, 20s timeout each); on failure we fall back to the OpenRouter chain.
 # Get a free key at https://aistudio.google.com (no credit card needed).
 GOOGLE_API_KEY       = os.environ.get("GOOGLE_API_KEY", "")
 GOOGLE_GEMMA_MODEL   = os.environ.get("GOOGLE_GEMMA_MODEL", "gemma-4-26b-a4b-it")
+GOOGLE_TIMEOUT_SEC   = 20      # timeout per attempt (Google API only)
+GOOGLE_MAX_ATTEMPTS  = 2       # total attempts per /chat request
 SESSIONS_DIR         = Path("sessions")
 SESSIONS_DIR.mkdir(exist_ok=True)
 
 # Email delivery (so saved sessions survive Render's ephemeral filesystem).
 # Render's free tier blocks outbound SMTP ports (25/465/587), so we use
 # Resend's HTTPS API instead — get a free API key at https://resend.com
-# (free tier: 3,000 emails/month, no credit card needed).
 # RESEND_API_KEY: your Resend API key (starts with "re_")
-# RESEND_FROM: sender address — on Resend's free tier, before you verify your
-#   own domain, you must use "onboarding@resend.dev" as the From address.
+# RESEND_FROM: sender address — before you verify your own domain,
+#   use "onboarding@resend.dev".
 # NOTIFY_EMAIL: your real inbox, where saved sessions should arrive.
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM    = os.environ.get("RESEND_FROM", "onboarding@resend.dev")
@@ -46,14 +47,10 @@ NOTIFY_EMAIL   = os.environ.get("NOTIFY_EMAIL", "")
 NAMES_MALE = [
     ("Γιώργος","ο"),("Κώστας","ο"),("Δημήτρης","ο"),
     ("Γιάννης","ο"),("Νίκος","ο"),("Αντώνης","ο"),("Χρήστος","ο"),
-    ("Σταύρος","ο"),("Παναγιώτης","ο"),("Θανάσης","ο"),
-    ("Βασίλης","ο"),("Μανώλης","ο"),
 ]
 NAMES_FEMALE = [
     ("Μαρία","η"),("Ελένη","η"),("Βασιλική","η"),
     ("Φωτεινή","η"),("Σοφία","η"),("Αικατερίνη","η"),
-    ("Δήμητρα","η"),("Αντιγόνη","η"),("Χαρά","η"),
-    ("Ειρήνη","η"),("Θεοδώρα","η"),("Νίκη","η"),
 ]
 DIAGNOSES_MALE = [
     "καρκίνο στον πνεύμονα","καρκίνο στο παχύ έντερο",
@@ -1067,21 +1064,17 @@ async def start(req: StartReq):
         "welcome_ts":               welcome_ts,
     }
 
-# ── /chat ───────────────────────────────────────────────────
+# ── Google Gemma call ───────────────────────────────────────
 async def call_google_gemma(messages: list) -> tuple:
-    """Try Gemma 4 26B via Google's own hosted Gemini API, called directly
-    (first-party — not through OpenRouter's free-tier community routing).
+    """Call Gemma 4 26B via Google's hosted Gemini API (one attempt, 20s timeout).
 
-    `messages` follows the OpenAI-style shape already built in /chat
-    (system + history + user). We translate that into Gemini's request
-    shape here so the rest of /chat doesn't need to know the difference.
+    `messages` follows the OpenAI-style shape built in /chat
+    (system + history + user); it is translated to Gemini's request shape here.
 
-    Returns (text, error): `text` is None if the call failed for any reason
-    (missing key, timeout, HTTP error, empty/thought-only response) — in
-    which case the caller falls back to the OpenRouter chain.
+    Returns (text, error): `text` is None if the call failed for any reason.
     """
     if not GOOGLE_API_KEY:
-        return None, "GOOGLE_API_KEY not set — skipping direct Gemma call"
+        return None, "GOOGLE_API_KEY not set"
 
     system_text = ""
     contents = []
@@ -1092,12 +1085,17 @@ async def call_google_gemma(messages: list) -> tuple:
             gemini_role = "model" if m["role"] == "assistant" else "user"
             contents.append({"role": gemini_role, "parts": [{"text": m["content"]}]})
 
+    # Gemini expects the conversation to start with a user turn; the patient's
+    # welcome message (assistant) is the first history entry, so drop leading model turns.
+    while contents and contents[0]["role"] == "model":
+        contents.pop(0)
+
     body = {
         "contents": contents,
         "generationConfig": {
             "temperature":     0.3,
             "topP":            0.85,
-            "maxOutputTokens": 250,  # a bit of headroom in case some thinking sneaks through
+            "maxOutputTokens": 250,
             "thinkingConfig":  {"thinkingLevel": "MINIMAL"},
         },
     }
@@ -1107,33 +1105,56 @@ async def call_google_gemma(messages: list) -> tuple:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GOOGLE_GEMMA_MODEL}:generateContent"
 
     try:
-        async with httpx.AsyncClient(timeout=12) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(GOOGLE_TIMEOUT_SEC)) as client:
             resp = await client.post(
                 url,
                 params={"key": GOOGLE_API_KEY},
                 headers={"Content-Type": "application/json; charset=utf-8"},
                 content=json.dumps(body, ensure_ascii=False).encode("utf-8"),
             )
-    except (httpx.TimeoutException, httpx.NetworkError) as e:
-        return None, f"Network/timeout error on direct Gemma: {e}"
+    except httpx.TimeoutException as e:
+        return None, f"Timeout (>{GOOGLE_TIMEOUT_SEC}s) on Google Gemma: {e!r}"
+    except httpx.HTTPError as e:
+        return None, f"Network error on Google Gemma: {e!r}"
 
     if resp.status_code != 200:
-        return None, f"Google API error {resp.status_code} on direct Gemma: {resp.text[:500]}"
+        return None, f"Google API error {resp.status_code}: {resp.text[:500]}"
 
-    resp_json = resp.json()
+    try:
+        resp_json = resp.json()
+    except ValueError:
+        return None, f"Invalid JSON from Google: {resp.text[:300]}"
+
     candidates = resp_json.get("candidates")
     if not candidates:
-        return None, f"No candidates from direct Gemma: {resp_json}"
+        return None, f"No candidates from Google: {resp_json}"
 
     parts = candidates[0].get("content", {}).get("parts", [])
     text  = "".join(p.get("text", "") for p in parts if not p.get("thought"))
 
     if not text.strip():
-        return None, f"Empty text from direct Gemma (likely an all-thought response): {resp_json}"
+        return None, f"Empty text from Google (likely an all-thought response): {resp_json}"
 
     return text, None
 
 
+def _looks_corrupted(text: str) -> bool:
+    """Detect garbage output: empty text, a token ('pad') repeating, or one
+    word repeated back-to-back many times."""
+    if not text or len(text.strip()) < 2:
+        return True
+    lowered = text.lower()
+    if lowered.count("pad") > 5:
+        return True
+    words = lowered.split()
+    if len(words) > 20:
+        most_common = max(set(words), key=words.count)
+        if words.count(most_common) > len(words) * 0.4:
+            return True
+    return False
+
+
+# ── /chat ───────────────────────────────────────────────────
 @app.post("/chat")
 async def chat(req: ChatReq):
     print(f"👉 /chat called, session_id={req.session_id}", flush=True)
@@ -1264,40 +1285,27 @@ async def chat(req: ChatReq):
         {"role": "user", "content": req.message}
     ]
 
-    def _looks_corrupted(text: str) -> bool:
-        """Detect the known free-tier artifact where a token (e.g. 'pad')
-        repeats dozens of times in a row, or the text is otherwise garbage."""
-        if not text or len(text.strip()) < 2:
-            return True
-        lowered = text.lower()
-        if lowered.count("pad") > 5:
-            return True
-        # any single word repeated back-to-back many times
-        words = lowered.split()
-        if len(words) > 20:
-            most_common = max(set(words), key=words.count)
-            if words.count(most_common) > len(words) * 0.4:
-                return True
-        return False
-
-    last_error  = None
-    raw_content = ""
-    model_used  = GOOGLE_GEMMA_MODEL
-    provider_used = "Google Generative Language API"
+    last_error      = None
+    raw_content     = ""
+    model_used      = GOOGLE_GEMMA_MODEL
+    provider_used   = "Google Generative Language API"
     request_started = time.perf_counter()
 
-    # Attempt 0: Gemma 4 26B via Google's own hosted Gemini API, called directly
-    # (first-party — bypasses OpenRouter's free-tier community routing entirely).
-    direct_text, direct_error = await call_google_gemma(messages)
-    if direct_text and not _looks_corrupted(direct_text):
-        raw_content = direct_text
-        print("✅ [chat] Got valid reply from direct Google Gemma API (attempt 0)", flush=True)
-    else:
+    # Step 1: Gemma 4 26B via Google's own hosted Gemini API — up to
+    # GOOGLE_MAX_ATTEMPTS tries, GOOGLE_TIMEOUT_SEC each.
+    google_ok = False
+    for g_attempt in range(1, GOOGLE_MAX_ATTEMPTS + 1):
+        direct_text, direct_error = await call_google_gemma(messages)
+        if direct_text and not _looks_corrupted(direct_text):
+            raw_content = direct_text
+            google_ok   = True
+            print(f"✅ [chat] Valid reply from direct Google Gemma (attempt {g_attempt}/{GOOGLE_MAX_ATTEMPTS})", flush=True)
+            break
         last_error = direct_error or f"Corrupted output from direct Gemma: {(direct_text or '')[:200]}"
-        print(f"⚠️ [chat attempt 0] Direct Gemma failed: {last_error}", flush=True)
+        print(f"⚠️ [chat google attempt {g_attempt}/{GOOGLE_MAX_ATTEMPTS}] {last_error}", flush=True)
 
-        # Fall back to the OpenRouter chain. nvidia/nemotron is last on purpose —
-        # everything else here has been more reliable in testing.
+    # Step 2: fall back to the OpenRouter chain if Google failed every attempt.
+    if not google_ok:
         models_to_try = [
             "meta-llama/llama-3.3-70b-instruct:free",        # excellent multilingual conversational quality, widely available
             "openai/gpt-oss-20b:free",                       # OpenAI open-weights, Apache 2.0, strong general quality
@@ -1314,7 +1322,6 @@ async def chat(req: ChatReq):
                         headers={
                             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                             "Content-Type":  "application/json",
-                            # optional, OpenRouter uses these for their leaderboard/analytics only:
                             "HTTP-Referer":  os.environ.get("PUBLIC_APP_URL", "https://example.com"),
                             "X-Title":       "EliGPT",
                         },
@@ -1327,15 +1334,8 @@ async def chat(req: ChatReq):
                             "frequency_penalty": 0.5,
                             "presence_penalty":  0.3,
                             "stream":            False,
-                            # NOTE: we used to force "reasoning": {"enabled": False} here, but
-                            # openai/gpt-oss-20b:free rejects that outright with HTTP 400
-                            # ("Reasoning is mandatory for this endpoint and cannot be disabled").
-                            # Since this whole chain is only a safety net behind the direct Gemma
-                            # call (which handles the actual latency-sensitive "no thinking" case),
-                            # getting a valid answer here matters more than trimming reasoning
-                            # tokens — so we just don't send the flag at all anymore.
                             "provider": {
-                                "sort": "throughput",       # prefer the fastest/most stable provider for this model
+                                "sort": "throughput",
                                 "allow_fallbacks": True,
                             },
                         },
@@ -1346,8 +1346,6 @@ async def chat(req: ChatReq):
                 continue
 
             if resp.status_code == 429:
-                # Rate-limited: don't wait — immediately try the next fallback model instead,
-                # since waiting would slow down the reply for no benefit when alternatives exist.
                 last_error = f"Rate limited on {model_id}: {resp.text}"
                 print(f"⚠️ [chat attempt {attempt}] 429 rate-limited on {model_id}, moving to next model immediately", flush=True)
                 continue
@@ -1359,22 +1357,20 @@ async def chat(req: ChatReq):
 
             resp_json = resp.json()
             if "choices" not in resp_json:
-                # OpenRouter can return HTTP 200 with an error body (e.g. bad key,
-                # rate limit, or the free model has no available provider right now)
                 last_error = f"OpenRouter did not return a completion on {model_id}: {resp_json}"
                 print(f"⚠️ [chat attempt {attempt}] No 'choices' in response from {model_id}: {resp_json}", flush=True)
                 continue
 
-            msg_data    = resp_json["choices"][0]["message"]
-            candidate   = msg_data.get("content") or msg_data.get("reasoning_content", "")
+            msg_data  = resp_json["choices"][0]["message"]
+            candidate = msg_data.get("content") or msg_data.get("reasoning_content", "")
 
             if _looks_corrupted(candidate):
                 last_error = f"Corrupted/repetitive output from {model_id} (attempt {attempt}): {candidate[:200]}"
                 print(f"⚠️ [chat attempt {attempt}] Corrupted output from {model_id}: {candidate[:200]}", flush=True)
                 continue
 
-            raw_content = candidate
-            model_used = model_id
+            raw_content   = candidate
+            model_used    = model_id
             provider_used = "OpenRouter"
             print(f"✅ [chat] Got valid reply from {model_id} on attempt {attempt}", flush=True)
             break
@@ -1382,8 +1378,8 @@ async def chat(req: ChatReq):
             print(f"❌ [chat] All attempts failed (direct Gemma + OpenRouter chain). Last error: {last_error}", flush=True)
             raise HTTPException(502, last_error or "Unknown error contacting LLM providers")
 
-    final_answer = clean_answer(extract_patient_answer(raw_content, language), language)
-    latency_ms = round((time.perf_counter() - request_started) * 1000)
+    final_answer  = clean_answer(extract_patient_answer(raw_content, language), language)
+    latency_ms    = round((time.perf_counter() - request_started) * 1000)
 
     history.append({"role": "user",      "content": req.message,  "ts": now})
     history.append({"role": "assistant", "content": final_answer, "ts": now,
@@ -1569,8 +1565,8 @@ def get_stats():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"🚀 EliGPT — port {port}")
-    print(f"🤖 Primary: Gemma 4 ({GOOGLE_GEMMA_MODEL}) via direct Google Gemini API")
-    print(f"🤖 Fallback chain (OpenRouter): llama-3.3-70b → gpt-oss-20b → mistral-small-3.1 → nvidia/nemotron (last resort)")
+    print(f"🤖 Primary: Gemma 4 ({GOOGLE_GEMMA_MODEL}) via direct Google Gemini API — {GOOGLE_MAX_ATTEMPTS} attempts, {GOOGLE_TIMEOUT_SEC}s timeout each")
+    print(f"🤖 Fallback chain (OpenRouter): llama-3.3-70b → gpt-oss-20b → nvidia/nemotron (last resort)")
     print(f"📁 Sessions: {SESSIONS_DIR.absolute()}")
     if not GOOGLE_API_KEY:
         print("⚠️  WARNING: GOOGLE_API_KEY env var is not set — direct Gemma calls will be skipped, going straight to OpenRouter fallback!")
